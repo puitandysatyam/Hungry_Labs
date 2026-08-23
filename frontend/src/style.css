@@ -1,0 +1,104 @@
+:root {
+  --bg-primary: #fdf7e7;
+  --bg-secondary: #ffffff;
+  --brand-primary: #e84a20;
+  --brand-primary-hover: #d13d18;
+  --brand-secondary: #2f5926;
+  --text-main: #1a1a1a;
+  --text-muted: #555555;
+  
+  --font-heading: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  --border-radius: 12px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-hover: 0 8px 24px rgba(232, 74, 32, 0.15);
+  
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+/* Typography Utilities */
+.text-brand { color: var(--brand-primary); }
+.text-green { color: var(--brand-secondary); }
+.font-heading { font-family: var(--font-heading); }
+
+/* Common Components */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  font-family: var(--font-heading);
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 1rem;
+}
+
+.btn-primary {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--brand-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-main);
+  border: 2px solid var(--text-main);
+}
+
+.btn-secondary:hover {
+  background-color: var(--text-main);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.card {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  border: 2px solid transparent;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: rgba(232, 74, 32, 0.1);
+  transform: translateY(-4px);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
