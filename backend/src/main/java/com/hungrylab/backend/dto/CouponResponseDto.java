@@ -8,7 +8,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CouponResponseDto {
-    private Boolean valid;
-    private Integer discountPercentage;
+    private boolean valid;
     private String message;
+    
+    // Details needed for frontend to update UI
+    private String discountType;
+    private Double discountValue;
+    private Double minOrderValue;
 }

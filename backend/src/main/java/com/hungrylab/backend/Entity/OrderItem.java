@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 
 @Entity
 @Table(name = "OrderItem")
@@ -27,6 +29,14 @@ public class OrderItem {
     @ManyToOne
     @JoinColumn(name = "menuItemId")
     private MenuItem menuItem;
+
+    @ManyToMany
+    @JoinTable(
+            name = "order_items_addons",
+            joinColumns = @JoinColumn(name = "order_item_id"),
+            inverseJoinColumns = @JoinColumn(name = "addon_id")
+    )
+    private List<Addon> addonList;
 
     private int quantity;
 

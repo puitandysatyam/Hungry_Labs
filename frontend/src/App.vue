@@ -9,16 +9,31 @@
         <div class="nav-links">
           <router-link to="/" class="nav-link">Home</router-link>
           <router-link to="/menu" class="nav-link">Menu</router-link>
+          
           <router-link to="/checkout" class="nav-link cart-link">
-            Cart <span class="cart-count">0</span>
+            Cart <span class="cart-count">{{ cartStore.cartCount }}</span>
           </router-link>
-          <router-link to="/admin" class="nav-link text-muted" style="font-size: 0.85rem">Admin</router-link>
+          
+          <!-- Auth Controls -->
+          <template v-if="authStore.isAuthenticated">
+            <router-link to="/history" class="nav-link p-muted">My Orders</router-link>
+            <router-link v-if="authStore.isAdmin" to="/admin" class="nav-link text-brand">Admin</router-link>
+            <button @click="authStore.logout()" class="btn btn-secondary btn-sm" style="margin-left: 12px; padding: 6px 12px;">Logout</button>
+          </template>
+          <template v-else>
+            <button @click="showAuth = true" class="btn btn-secondary btn-sm" style="margin-left: 12px; padding: 6px 12px;">Login</button>
+          </template>
         </div>
       </div>
     </nav>
 
     <main class="main-content">
-      <router-view></router-view>
+      <!-- Added standard Vue Router transition for smooth page loads -->
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
 
     <footer class="footer">
@@ -26,8 +41,32 @@
         <p>&copy; 2026 The Hungry Lab. Fresh. Filling. Full of flavor.</p>
       </div>
     </footer>
+
+    <!-- Global Auth Modal -->
+    <AuthModal :show="showAuth" @close="showAuth = false" />
   </div>
 </template>
+
+<script setup>
+import { ref, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useCartStore } from './stores/cart'
+import { useAuthStore } from './stores/auth'
+import AuthModal from './components/AuthModal.vue'
+
+const cartStore = useCartStore()
+const authStore = useAuthStore()
+const route = useRoute()
+
+const showAuth = ref(false)
+
+// Open modal automatically if booted from a protected route
+watch(() => route.query.login, (newVal) => {
+  if (newVal === 'true') {
+    showAuth.value = true
+  }
+})
+</script>
 
 <style scoped>
 .app-container {
@@ -56,14 +95,13 @@
   width: auto;
   transition: var(--transition);
 }
-
 .nav-logo:hover {
   transform: scale(1.05);
 }
 
 .nav-links {
   display: flex;
-  gap: 24px;
+  gap: 20px;
   align-items: center;
 }
 
@@ -72,13 +110,13 @@
   color: var(--text-main);
   font-weight: 600;
   font-family: var(--font-heading);
-  font-size: 1.1rem;
+  font-size: 1rem;
   transition: var(--transition);
 }
-
 .nav-link:hover, .nav-link.router-link-active {
   color: var(--brand-primary);
 }
+.p-muted { color: var(--text-muted); }
 
 .cart-link {
   display: flex;
@@ -89,7 +127,6 @@
   padding: 8px 16px;
   border-radius: 20px;
 }
-
 .cart-link:hover {
   background-color: var(--brand-primary-hover);
   transform: translateY(-2px);
@@ -105,6 +142,8 @@
   font-weight: bold;
 }
 
+.btn-sm { font-size: 0.85rem; }
+
 .main-content {
   flex: 1;
   padding: 40px 0;
@@ -116,5 +155,16 @@
   border-top: 1px solid rgba(0,0,0,0.05);
   margin-top: auto;
   color: var(--text-muted);
+}
+
+/* Global Transition for Router View */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>

@@ -11,5 +11,7 @@ import java.util.List;
 public class OrderItemRequestDto {
     private Long menuItemId;
     private Integer quantity;
-    private List<String> selectedAddOns;
+    
+    // Changed to Long IDs based on your instruction!
+    private List<Long> selectedAddOnIds;
 }

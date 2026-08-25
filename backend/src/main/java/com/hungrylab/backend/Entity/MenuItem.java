@@ -1,6 +1,5 @@
 package com.hungrylab.backend.Entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,7 +9,7 @@ import lombok.Setter;
 import java.util.List;
 
 @Entity
-@Table(name = "MenuItem")
+@Table(name = "menu_item") // Changed case for PostGres safely
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,9 +22,14 @@ public class MenuItem {
 
     private String category;
     private String name;
+    
+    // "desc" is a reserved keyword in SQL (short for DESCENDING)
+    @Column(name = "description") 
     private String desc;
+    
     private double price;
-    private boolean isVeg;
+    private boolean Veg;
+    private String imageUrl;
 
     @ManyToMany
     @JoinTable(
@@ -33,7 +37,5 @@ public class MenuItem {
             joinColumns = @JoinColumn(name = "menu_item_id"),
             inverseJoinColumns = @JoinColumn(name = "addon_id")
     )
-    private List<Addon> addons;
-
-
+    private List<Addon> addonList;
 }

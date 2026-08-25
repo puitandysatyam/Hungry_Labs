@@ -9,11 +9,17 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderRequestDto {
+    private Long userId; 
+    
     private String customerName;
+    private String customerEmail;
     private String customerPhone;
     private String deliveryAddress;
+    
     private List<OrderItemRequestDto> items;
-    private Double totalAmount;
+    
+    private Double expectedTotalAmount; 
     private String couponCode;
+    
     private String paymentStatus;
 }

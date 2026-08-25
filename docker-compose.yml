@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # The PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: hungrylabs_postgres
+    environment:
+      POSTGRES_DB: hungrylabs
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # PGAdmin (Web Interface for Postgres)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: hungrylabs_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@hungrylabs.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: hungrylabs_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # The Spring Boot Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hungrylabs_backend
+    ports:
+      - "8080:8080"
+    environment:
+      # We OVERRIDE the application.properties here!
+      # Inside the Docker network, "localhost" means the backend container itself.
+      # We must point it to the "postgres" service name instead.
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hungrylabs
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

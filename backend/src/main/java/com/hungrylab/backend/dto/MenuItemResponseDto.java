@@ -13,8 +13,8 @@ public class MenuItemResponseDto {
     private String category;
     private String name;
     private String description;
-    private Double price;
-    private Boolean isVeg;
+    private double price;
+    private boolean Veg;
     private String imageUrl;
     private List<AddOnDto> addOns;
 }

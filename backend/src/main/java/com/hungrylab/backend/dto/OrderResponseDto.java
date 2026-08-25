@@ -11,4 +11,5 @@ public class OrderResponseDto {
     private Long orderId;
     private String status;
     private Integer etaMinutes;
+    private String razorpayOrderId;
 }

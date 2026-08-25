@@ -1,15 +1,17 @@
 package com.hungrylab.backend.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
+@Builder
 @AllArgsConstructor
-public class AddOnDto {
-    private Long id;
+@NoArgsConstructor
+public class RegisterRequestDto {
     private String name;
-    private Double price;
+    private String email;
+    private String password;
+    private String phone;
 }
-
