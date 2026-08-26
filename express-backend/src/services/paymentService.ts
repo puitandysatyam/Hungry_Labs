@@ -31,7 +31,7 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
             await prisma.$transaction([
                 prisma.payment.update({
                     where: { id: payment.id },
-                    data: { status: "SUCCESS", razorpayPaymentId: rzpPaymentId, razorpaySignature: signature }
+                    data: { status: "SUCCESS", razorpayPaymentId: rzpPaymentId }
                 }),
                 prisma.order.update({
                     where: { id: payment.orderId },
