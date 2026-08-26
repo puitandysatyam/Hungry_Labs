@@ -1,17 +1,9 @@
 import { Request, Response } from 'express';
 import prisma from '../config/db';
 import redis from '../config/redis';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-const s3Client = new S3Client({
-    endpoint: process.env.B2_ENDPOINT,
-    region: "us-east-005",
-    credentials: {
-        accessKeyId: process.env.B2_KEY_ID || '',
-        secretAccessKey: process.env.B2_APP_KEY || ''
-    }
-});
+import { s3Client, generatePresignedUrl } from '../utils/s3';
 
 const invalidateMenuCache = async () => {
     if (redis) {
@@ -158,7 +150,11 @@ export const deleteMenuItem = async (req: Request, res: Response) => {
 export const getCarouselImages = async (req: Request, res: Response) => {
     try {
         const images = await prisma.carouselImage.findMany({ orderBy: { order: 'asc' } });
-        res.json(images);
+        const formattedImages = await Promise.all(images.map(async (slide) => ({
+            ...slide,
+            imageUrl: await generatePresignedUrl(slide.imageUrl)
+        })));
+        res.json(formattedImages);
     } catch (e: any) { res.status(500).json(e.message); }
 };
 

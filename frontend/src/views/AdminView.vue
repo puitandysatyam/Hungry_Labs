@@ -350,6 +350,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import imageCompression from 'browser-image-compression'
 
 const authStore = useAuthStore()
 const activeTab = ref('orders')
@@ -462,12 +463,16 @@ const handleMenuSubmit = async () => {
   try {
     let finalImageUrl = menuForm.value.imageUrl;
     if (selectedFile.value) {
-      const presignRes = await fetch(`http://localhost:3000/api/admin/upload-url?filename=${encodeURIComponent(selectedFile.value.name)}&contentType=${encodeURIComponent(selectedFile.value.type)}`, { headers: authStore.getAuthHeaders() })
+      const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1200, useWebWorker: true, fileType: 'image/webp' };
+      const compressedFile = await imageCompression(selectedFile.value, options);
+      const filename = selectedFile.value.name.replace(/\.[^/.]+$/, "") + ".webp";
+
+      const presignRes = await fetch(`http://localhost:3000/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
       if (!presignRes.ok) throw new Error("Upload auth failed.")
       const presignData = await presignRes.json()
       
       const proxiedUploadUrl = presignData.uploadUrl.replace("https://s3.us-east-005.backblazeb2.com", "/b2api")
-      const uploadRes = await fetch(proxiedUploadUrl, { method: 'PUT', body: selectedFile.value, headers: { 'Content-Type': selectedFile.value.type } })
+      const uploadRes = await fetch(proxiedUploadUrl, { method: 'PUT', body: compressedFile, headers: { 'Content-Type': 'image/webp' } })
       if (!uploadRes.ok) throw new Error("Cloud upload failed.")
       finalImageUrl = presignData.finalUrl
     }
@@ -553,12 +558,16 @@ const handleCarouselSubmit = async () => {
     let finalImageUrl = carouselForm.value.imageUrl;
     // Handle cloud upload if user selected a file
     if (selectedFile.value) {
-      const presignRes = await fetch(`http://localhost:3000/api/admin/upload-url?filename=${encodeURIComponent(selectedFile.value.name)}&contentType=${encodeURIComponent(selectedFile.value.type)}`, { headers: authStore.getAuthHeaders() })
+      const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1200, useWebWorker: true, fileType: 'image/webp' };
+      const compressedFile = await imageCompression(selectedFile.value, options);
+      const filename = selectedFile.value.name.replace(/\.[^/.]+$/, "") + ".webp";
+
+      const presignRes = await fetch(`http://localhost:3000/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
       if (!presignRes.ok) throw new Error("Upload auth failed.")
       const presignData = await presignRes.json()
       
       const proxiedUploadUrl = presignData.uploadUrl.replace("https://s3.us-east-005.backblazeb2.com", "/b2api")
-      const uploadRes = await fetch(proxiedUploadUrl, { method: 'PUT', body: selectedFile.value, headers: { 'Content-Type': selectedFile.value.type } })
+      const uploadRes = await fetch(proxiedUploadUrl, { method: 'PUT', body: compressedFile, headers: { 'Content-Type': 'image/webp' } })
       if (!uploadRes.ok) throw new Error("Cloud upload failed.")
       finalImageUrl = presignData.finalUrl
     }

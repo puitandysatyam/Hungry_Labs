@@ -7,9 +7,13 @@ import {
     getUploadUrl,
     createCoupon
 } from '../controllers/adminController';
+import { createBackup } from '../controllers/backupController';
 import { requireAuth, requireAdmin } from '../middlewares/auth';
 
 const router = Router();
+
+// Cron jobs / Server-to-server endpoints (No user auth needed, uses CRON_SECRET)
+router.get('/backup', createBackup);
 
 router.use(requireAuth, requireAdmin);
 

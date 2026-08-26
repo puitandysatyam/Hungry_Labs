@@ -28,10 +28,9 @@
         <div class="carousel-container" v-if="carouselImages.length">
           <transition-group name="slide-fade" tag="div" class="carousel-wrapper">
             <img 
-              v-for="(img, index) in carouselImages" 
-              v-show="index === currentSlide"
-              :key="'carousel-'+index" 
-              :src="img.imageUrl" 
+              v-if="carouselImages.length > 0 && carouselImages[currentSlide]"
+              :key="'carousel-' + currentSlide"
+              :src="carouselImages[currentSlide].imageUrl" 
               class="hero-img-element carousel-img" 
               alt="Delicious Food Offer"
             />
@@ -47,8 +46,6 @@
             ></span>
           </div>
         </div>
-        <!-- Fallback if backend empty -->
-        <img v-else src="/assets/hero.png" alt="Delicious Food" class="hero-img-element" />
       </div>
     </section>
 
@@ -200,30 +197,30 @@ onUnmounted(() => {
 .carousel-wrapper {
   position: relative;
   width: 100%;
-  aspect-ratio: 1/1; /* keep it square/consistent */
   display: flex;
   justify-content: center;
   align-items: center;
+  min-height: 400px;
 }
 
 .carousel-img {
-  position: absolute; /* allow overlays for proper transition */
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) perspective(1000px) rotateY(-8deg) rotateX(4deg);
-  max-width: 90%;
-  max-height: 90%;
+  position: relative;
+  transform: perspective(1000px) rotateY(-8deg) rotateX(4deg);
+  max-width: 100%;
+  max-height: 550px;
   object-fit: contain;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .carousel-img:hover {
-  transform: translate(-50%, -50%) perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.02);
+  transform: perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.02);
 }
 
 .carousel-indicators {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: -20px;
+  margin-top: 15px;
   z-index: 10;
 }
 
@@ -241,27 +238,22 @@ onUnmounted(() => {
 }
 
 .hero-img-element {
-  max-width: 100%;
-  height: auto;
   border-radius: 24px;
   box-shadow: var(--shadow-lg);
-  transform: perspective(1000px) rotateY(-8deg) rotateX(4deg);
-  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.hero-img-element:hover {
-  transform: perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.02);
 }
 
 /* Animations for Carousel */
 .slide-fade-enter-active, .slide-fade-leave-active {
   transition: all 0.8s ease;
 }
+.slide-fade-leave-active {
+  position: absolute;
+}
 .slide-fade-enter-from {
-  opacity: 0; transform: translate(-30%, -50%) perspective(1000px) rotateY(-15deg);
+  opacity: 0; transform: perspective(1000px) rotateY(-15deg);
 }
 .slide-fade-leave-to {
-  opacity: 0; transform: translate(-70%, -50%) perspective(1000px) rotateY(0deg);
+  opacity: 0; transform: perspective(1000px) rotateY(0deg);
 }
 
 .offers-section {
@@ -334,6 +326,6 @@ onUnmounted(() => {
   .hero-actions { justify-content: center; flex-direction: column;}
   .stats-row { justify-content: center; }
   .hero-img-element { transform: none; }
-  .carousel-img { transform: translate(-50%, -50%) !important; }
+  .carousel-img { transform: none !important; }
 }
 </style>

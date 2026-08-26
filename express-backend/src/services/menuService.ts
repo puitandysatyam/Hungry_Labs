@@ -1,33 +1,6 @@
 import prisma from '../config/db';
 import redis from '../config/redis';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-const s3Client = new S3Client({
-    endpoint: process.env.B2_ENDPOINT,
-    region: "us-east-005",
-    credentials: {
-        accessKeyId: process.env.B2_KEY_ID || '',
-        secretAccessKey: process.env.B2_APP_KEY || ''
-    }
-});
-
-const generatePresignedUrl = async (objectKey: string | null) => {
-    if (!objectKey) return null;
-    if (objectKey.startsWith('http') || objectKey.startsWith('data:') || objectKey.startsWith('/')) return objectKey;
-
-    try {
-        const decodedKey = decodeURIComponent(objectKey); 
-        const command = new GetObjectCommand({
-            Bucket: process.env.BUCKET_NAME || 'HungryLab-WebsiteFiles',
-            Key: decodedKey
-        });
-        return await getSignedUrl(s3Client, command, { expiresIn: 7200 });
-    } catch (e) {
-        console.error("Presign error:", e);
-        return null;
-    }
-}
+import { generatePresignedUrl } from '../utils/s3';
 
 export const getMenu = async () => {
     const CACHE_KEY = "menuCache::allMenuItems";
@@ -82,12 +55,7 @@ export const getCarousel = async () => {
         order: slide.order
     })));
 
-    // Fallback if empty to ensure the UI looks good
-    if (formattedSlides.length === 0) {
-        formattedSlides.push({ id: -1, imageUrl: '/assets/Menu 1.png', order: 0 });
-        formattedSlides.push({ id: -2, imageUrl: '/assets/Menu 2.png', order: 1 });
-        formattedSlides.push({ id: -3, imageUrl: '/assets/Menu 3.png', order: 2 });
-    }
+    // Fallback logic removed as per request
 
     if (redis) {
         try {

@@ -15,14 +15,8 @@ const app = express();
 // If false, all requests look like they come from Vercel's load balancer and ONE user could rate-limit the whole app
 app.set('trust proxy', 1);
 
-// Apply global rate limiting
-app.use(rateLimiterMiddleware);
-
-// Enable parsing raw body for webhooks - this handles Razorpay signature validation natively
-app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
-
 // Secure CORS - origin cannot be '*' when credentials are true
+// Must be before rate limiting so that 429 responses get CORS headers!
 app.use(cors({
   origin: function (origin, callback) {
       // In dev, allow any origin. In production, whitelist domains.
@@ -31,6 +25,13 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: true
 }));
+
+// Apply global rate limiting
+app.use(rateLimiterMiddleware);
+
+// Enable parsing raw body for webhooks - this handles Razorpay signature validation natively
+app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json());
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Express backend running on Vercel" });
