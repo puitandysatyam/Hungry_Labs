@@ -110,7 +110,7 @@ const fetchMenu = async () => {
   try {
     isLoading.value = true
     error.value = null
-    const response = await fetch('http://localhost:8080/api/menu/')
+    const response = await fetch('http://localhost:3000/api/menu/')
     if (!response.ok) throw new Error('Failed to load menu')
     menuItems.value = await response.json()
   } catch (err) {

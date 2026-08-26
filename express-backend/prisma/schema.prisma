@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -13,77 +12,70 @@ model User {
   email     String   @unique
   phone     String?
   password  String
-  address   String[]
   role      String   @default("USER")
   orders    Order[]
-
-  @@map("users")
 }
 
 model MenuItem {
-  id          Int      @id @default(autoincrement())
-  category    String?
-  name        String?
-  description String?  @map("desc")
-  price       Float
-  veg         Boolean  @default(false)
-  imageUrl    String?
-  addons      Addon[]  @relation("MenuItemAddons")
-  orderItems  OrderItem[]
+  id         Int         @id @default(autoincrement())
+  category   String
+  name       String
+  desc       String?
+  price      Float
+  veg        Boolean
+  imageUrl   String?
+  addons     Addon[]     @relation("MenuAddons")
+  orderItems OrderItem[]
 }
 
 model Addon {
-  id        Int         @id @default(autoincrement())
-  category  String?
-  name      String?
-  price     Float
-  menuItems MenuItem[]  @relation("MenuItemAddons")
+  id         Int         @id @default(autoincrement())
+  name       String
+  price      Float
+  menuItems  MenuItem[]  @relation("MenuAddons")
   orderItems OrderItem[] @relation("OrderItemAddons")
 }
 
 model Order {
-  id              Int      @id @default(autoincrement())
+  id              Int         @id @default(autoincrement())
+  customerId      Int?
+  user            User?       @relation(fields: [customerId], references: [id])
   customerName    String?
   customerEmail   String?
   customerPhone   String?
   deliveryAddress String?
-  userId          Int?
-  user            User?    @relation(fields: [userId], references: [id])
-  orderItems      OrderItem[]
   totalAmount     Float
   status          String
+  createdAt       DateTime    @default(now())
+  orderItems      OrderItem[]
   payment         Payment?
-
-  @@map("orders")
 }
 
 model OrderItem {
-  id          Int      @id @default(autoincrement())
-  orderId     Int
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItemId  Int
-  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
-  quantity    Int
-  addons      Addon[]  @relation("OrderItemAddons")
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  order      Order    @relation(fields: [orderId], references: [id])
+  menuItemId Int
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int
+  addons     Addon[]  @relation("OrderItemAddons")
 }
 
 model Payment {
   id                Int      @id @default(autoincrement())
   orderId           Int      @unique
-  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  razorpayOrderId   String?
+  order             Order    @relation(fields: [orderId], references: [id])
+  razorpayOrderId   String   @unique
   razorpayPaymentId String?
-  razorpaySignature String?
   status            String
   createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
 }
 
 model Coupon {
-  id              Int      @id @default(autoincrement())
-  code            String   @unique
-  discountType    String
-  discountValue   Float
-  minOrderValue   Float
-  validUntil      DateTime?
+  id            Int     @id @default(autoincrement())
+  code          String  @unique
+  discountType  String
+  discountValue Float
+  minOrderValue Float
+  active        Boolean
 }

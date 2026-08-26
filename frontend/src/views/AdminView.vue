@@ -290,35 +290,35 @@ const allAddons = ref([])
 // Fetch Logic
 const fetchActiveOrders = async () => {
   try {
-    const res = await fetch('http://localhost:8080/api/admin/orders/active', { headers: authStore.getAuthHeaders() })
+    const res = await fetch('http://localhost:3000/api/admin/orders/active', { headers: authStore.getAuthHeaders() })
     if (res.ok) activeOrders.value = await res.json()
   } catch (e) { console.error("Poll failed", e) }
 }
 
 const fetchOrderHistory = async () => {
   try {
-    const res = await fetch('http://localhost:8080/api/admin/orders', { headers: authStore.getAuthHeaders() })
+    const res = await fetch('http://localhost:3000/api/admin/orders', { headers: authStore.getAuthHeaders() })
     if (res.ok) orderHistory.value = await res.json()
   } catch (e) { console.error(e) }
 }
 
 const fetchMenu = async () => {
   try {
-    const res = await fetch('http://localhost:8080/api/menu')
+    const res = await fetch('http://localhost:3000/api/menu')
     if (res.ok) allMenu.value = await res.json()
   } catch (e) { console.error(e) }
 }
 
 const fetchAddons = async () => {
   try {
-    const res = await fetch('http://localhost:8080/api/admin/addons', { headers: authStore.getAuthHeaders() })
+    const res = await fetch('http://localhost:3000/api/admin/addons', { headers: authStore.getAuthHeaders() })
     if (res.ok) allAddons.value = await res.json()
   } catch (e) { console.error(e) }
 }
 
 const updateOrderStatus = async (id, status) => {
   try {
-    await fetch(`http://localhost:8080/api/admin/orders/${id}/status?status=${status}`, {
+    await fetch(`http://localhost:3000/api/admin/orders/${id}/status?status=${status}`, {
       method: 'PUT',
       headers: authStore.getAuthHeaders()
     })
@@ -384,7 +384,7 @@ const handleMenuSubmit = async () => {
   try {
     let finalImageUrl = menuForm.value.imageUrl;
     if (selectedFile.value) {
-      const presignRes = await fetch(`http://localhost:8080/api/admin/upload-url?filename=${encodeURIComponent(selectedFile.value.name)}&contentType=${encodeURIComponent(selectedFile.value.type)}`, { headers: authStore.getAuthHeaders() })
+      const presignRes = await fetch(`http://localhost:3000/api/admin/upload-url?filename=${encodeURIComponent(selectedFile.value.name)}&contentType=${encodeURIComponent(selectedFile.value.type)}`, { headers: authStore.getAuthHeaders() })
       if (!presignRes.ok) throw new Error("Upload auth failed.")
       const presignData = await presignRes.json()
       
@@ -395,7 +395,7 @@ const handleMenuSubmit = async () => {
     }
     
     const payload = { ...menuForm.value, imageUrl: finalImageUrl }
-    const url = payload.id ? `http://localhost:8080/api/admin/menu/${payload.id}` : `http://localhost:8080/api/admin/menu`
+    const url = payload.id ? `http://localhost:3000/api/admin/menu/${payload.id}` : `http://localhost:3000/api/admin/menu`
     const method = payload.id ? 'PUT' : 'POST'
     
     const res = await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -421,7 +421,7 @@ const openAddonModal = (item = null) => {
 
 const handleAddonSubmit = async () => {
   try {
-    const url = addonForm.value.id ? `http://localhost:8080/api/admin/addons/${addonForm.value.id}` : `http://localhost:8080/api/admin/addons`
+    const url = addonForm.value.id ? `http://localhost:3000/api/admin/addons/${addonForm.value.id}` : `http://localhost:3000/api/admin/addons`
     const method = addonForm.value.id ? 'PUT' : 'POST'
     await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(addonForm.value) })
     showAddonModal.value = false
@@ -436,7 +436,7 @@ const handleCouponSubmit = async () => {
   couponStatus.value = ''
   try {
     couponForm.value.code = couponForm.value.code.toUpperCase()
-    const res = await fetch('http://localhost:8080/api/admin/coupons', { method: 'POST', headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(couponForm.value) })
+    const res = await fetch('http://localhost:3000/api/admin/coupons', { method: 'POST', headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(couponForm.value) })
     if (!res.ok) throw new Error("Failed to save.")
     couponStatus.value = "Coupon Activated!"
     couponForm.value = { code: '', discountType: 'PERCENTAGE', discountValue: 0, minOrderValue: 0, active: true }

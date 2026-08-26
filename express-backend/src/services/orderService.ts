@@ -13,8 +13,9 @@ export const applyCoupon = async (code: string) => {
         return { valid: false, message: "Invalid coupon", discountType: null, discountValue: null, minOrderValue: null };
     }
     
-    if (coupon.validUntil && new Date() > coupon.validUntil) {
-        return { valid: false, message: "Coupon expired", discountType: null, discountValue: null, minOrderValue: null };
+    // Prisma Date/Boolean fixes
+    if (!coupon.active) {
+        return { valid: false, message: "Coupon is no longer active", discountType: null, discountValue: null, minOrderValue: null };
     }
 
     return {
@@ -48,12 +49,14 @@ export const placeOrder = async (data: any) => {
     // 2. Apply coupon logic (if passed)
     if (data.couponCode) {
         const coupon = await prisma.coupon.findUnique({ where: { code: data.couponCode } });
-        if (coupon && calculatedTotal >= coupon.minOrderValue) {
+        if (coupon && calculatedTotal >= coupon.minOrderValue && coupon.active) {
             if (coupon.discountType === 'FLAT') {
                 calculatedTotal -= coupon.discountValue;
             } else if (coupon.discountType === 'PERCENTAGE') {
                 calculatedTotal -= (calculatedTotal * (coupon.discountValue / 100));
             }
+            // Math.max protection to prevent Razorpay crashing on zero balance
+            calculatedTotal = Math.max(1.0, calculatedTotal);
         }
     }
 
@@ -62,7 +65,7 @@ export const placeOrder = async (data: any) => {
         // Create order
         const order = await tx.order.create({
             data: {
-                userId: data.userId || null, 
+                customerId: data.userId || null, 
                 customerName: data.customerName,
                 customerEmail: data.customerEmail,
                 customerPhone: data.customerPhone,
@@ -89,7 +92,7 @@ export const placeOrder = async (data: any) => {
         return order;
     });
 
-    // 4. Razorpay Integration
+    // 4. Razorpay Integration (Math.round protection against floating points)
     const rzpOrder = await razorpay.orders.create({
         amount: Math.round(calculatedTotal * 100), // PAISE
         currency: "INR",

@@ -29,8 +29,6 @@ export const getUserOrders = async (req: Request, res: Response) => {
         const { userId } = req.params;
         const requestingUser = (req as any).user;
         
-        // Ensure user is authorized to fetch this id
-        // In java: user = userRepository.findByEmail(...) ...
         const user = await prisma.user.findUnique({ where: { email: requestingUser.email } });
         
         if (!user || user.id.toString() !== userId) {
@@ -38,13 +36,32 @@ export const getUserOrders = async (req: Request, res: Response) => {
         }
 
         const orders = await prisma.order.findMany({ 
-            where: { userId: Number(userId) },
+            where: { customerId: Number(userId) },
             include: { 
                 orderItems: { include: { menuItem: true, addons: true } }
             } 
         });
 
-        res.json(orders);
+        // Map Prisma DB schema back perfectly into the Vue Frontend's expected Order DTO
+        const formattedOrders = orders.map(order => ({
+            id: order.id,
+            customerId: order.customerId,
+            customerName: order.customerName,
+            customerEmail: order.customerEmail,
+            customerPhone: order.customerPhone,
+            deliveryAddress: order.deliveryAddress,
+            totalAmount: order.totalAmount,
+            status: order.status,
+            createdAt: order.createdAt,
+            orderItemList: order.orderItems.map(item => ({
+                id: item.id,
+                quantity: item.quantity,
+                menuItem: item.menuItem,
+                addonList: item.addons
+            }))
+        }));
+
+        res.json(formattedOrders);
     } catch (e: any) {
         res.status(403).json(null);
     }
