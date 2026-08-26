@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String?
+  email     String   @unique
+  phone     String?
+  password  String
+  address   String[]
+  role      String   @default("USER")
+  orders    Order[]
+
+  @@map("users")
+}
+
+model MenuItem {
+  id          Int      @id @default(autoincrement())
+  category    String?
+  name        String?
+  description String?  @map("desc")
+  price       Float
+  veg         Boolean  @default(false)
+  imageUrl    String?
+  addons      Addon[]  @relation("MenuItemAddons")
+  orderItems  OrderItem[]
+}
+
+model Addon {
+  id        Int         @id @default(autoincrement())
+  category  String?
+  name      String?
+  price     Float
+  menuItems MenuItem[]  @relation("MenuItemAddons")
+  orderItems OrderItem[] @relation("OrderItemAddons")
+}
+
+model Order {
+  id              Int      @id @default(autoincrement())
+  customerName    String?
+  customerEmail   String?
+  customerPhone   String?
+  deliveryAddress String?
+  userId          Int?
+  user            User?    @relation(fields: [userId], references: [id])
+  orderItems      OrderItem[]
+  totalAmount     Float
+  status          String
+  payment         Payment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId  Int
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity    Int
+  addons      Addon[]  @relation("OrderItemAddons")
+}
+
+model Payment {
+  id                Int      @id @default(autoincrement())
+  orderId           Int      @unique
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
+  status            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Coupon {
+  id              Int      @id @default(autoincrement())
+  code            String   @unique
+  discountType    String
+  discountValue   Float
+  minOrderValue   Float
+  validUntil      DateTime?
+}
