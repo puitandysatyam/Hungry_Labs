@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
 
-const SECRET = process.env.JWT_SECRET || '404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970';
+if (!process.env.JWT_SECRET) {
+    throw new Error("FATAL ERROR: JWT_SECRET is not defined in the environment variables. The application cannot start securely.");
+}
+
+const SECRET = process.env.JWT_SECRET;
 
 export const generateToken = (payload: any) => {
     return jwt.sign(payload, SECRET, { expiresIn: '24h' });
