@@ -85,7 +85,7 @@ const handleSubmit = async () => {
       ? { email: form.email, password: form.password }
       : form
       
-    const res = await fetch(`http://localhost:3000${endpoint}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

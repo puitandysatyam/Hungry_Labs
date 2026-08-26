@@ -70,7 +70,7 @@ const fetchOrders = async () => {
   error.value = null
   
   try {
-    const res = await fetch(`http://localhost:3000/api/orders/user/${authStore.user.id}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/user/${authStore.user.id}`, {
       headers: authStore.getAuthHeaders()
     })
     

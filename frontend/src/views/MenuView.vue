@@ -119,7 +119,7 @@ const fetchMenu = async () => {
   try {
     isLoading.value = true
     error.value = null
-    const response = await fetch('http://localhost:3000/api/menu/')
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/menu/`)
     if (!response.ok) throw new Error('Failed to load menu')
     const data = await response.json()
     menuItems.value = data.map(item => ({ ...item, selectedAddOnsLocal: [] }))

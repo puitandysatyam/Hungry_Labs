@@ -85,7 +85,7 @@ let slideInterval = null;
 
 const fetchCarousel = async () => {
   try {
-    const res = await fetch('http://localhost:3000/api/menu/carousel');
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/menu/carousel`);
     if (res.ok) {
       carouselImages.value = await res.json();
       startCarousel();

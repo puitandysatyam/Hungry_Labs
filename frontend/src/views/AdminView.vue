@@ -369,35 +369,35 @@ const allAddons = ref([])
 // Fetch Logic
 const fetchActiveOrders = async () => {
   try {
-    const res = await fetch('http://localhost:3000/api/admin/orders/active', { headers: authStore.getAuthHeaders() })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders/active`, { headers: authStore.getAuthHeaders() })
     if (res.ok) activeOrders.value = await res.json()
   } catch (e) { console.error("Poll failed", e) }
 }
 
 const fetchOrderHistory = async () => {
   try {
-    const res = await fetch('http://localhost:3000/api/admin/orders', { headers: authStore.getAuthHeaders() })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders`, { headers: authStore.getAuthHeaders() })
     if (res.ok) orderHistory.value = await res.json()
   } catch (e) { console.error(e) }
 }
 
 const fetchMenu = async () => {
   try {
-    const res = await fetch('http://localhost:3000/api/menu')
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/menu`)
     if (res.ok) allMenu.value = await res.json()
   } catch (e) { console.error(e) }
 }
 
 const fetchAddons = async () => {
   try {
-    const res = await fetch('http://localhost:3000/api/admin/addons', { headers: authStore.getAuthHeaders() })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons`, { headers: authStore.getAuthHeaders() })
     if (res.ok) allAddons.value = await res.json()
   } catch (e) { console.error(e) }
 }
 
 const updateOrderStatus = async (id, status) => {
   try {
-    await fetch(`http://localhost:3000/api/admin/orders/${id}/status?status=${status}`, {
+    await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders/${id}/status?status=${status}`, {
       method: 'PUT',
       headers: authStore.getAuthHeaders()
     })
@@ -467,7 +467,7 @@ const handleMenuSubmit = async () => {
       const compressedFile = await imageCompression(selectedFile.value, options);
       const filename = selectedFile.value.name.replace(/\.[^/.]+$/, "") + ".webp";
 
-      const presignRes = await fetch(`http://localhost:3000/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
+      const presignRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
       if (!presignRes.ok) throw new Error("Upload auth failed.")
       const presignData = await presignRes.json()
       
@@ -478,7 +478,7 @@ const handleMenuSubmit = async () => {
     }
     
     const payload = { ...menuForm.value, imageUrl: finalImageUrl }
-    const url = payload.id ? `http://localhost:3000/api/admin/menu/${payload.id}` : `http://localhost:3000/api/admin/menu`
+    const url = payload.id ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/menu/${payload.id}` : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/menu`
     const method = payload.id ? 'PUT' : 'POST'
     
     const res = await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -504,7 +504,7 @@ const openAddonModal = (item = null) => {
 
 const handleAddonSubmit = async () => {
   try {
-    const url = addonForm.value.id ? `http://localhost:3000/api/admin/addons/${addonForm.value.id}` : `http://localhost:3000/api/admin/addons`
+    const url = addonForm.value.id ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons/${addonForm.value.id}` : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons`
     const method = addonForm.value.id ? 'PUT' : 'POST'
     await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(addonForm.value) })
     showAddonModal.value = false
@@ -519,7 +519,7 @@ const handleCouponSubmit = async () => {
   couponStatus.value = ''
   try {
     couponForm.value.code = couponForm.value.code.toUpperCase()
-    const res = await fetch('http://localhost:3000/api/admin/coupons', { method: 'POST', headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(couponForm.value) })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/coupons`, { method: 'POST', headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(couponForm.value) })
     if (!res.ok) throw new Error("Failed to save.")
     couponStatus.value = "Coupon Activated!"
     couponForm.value = { code: '', discountType: 'PERCENTAGE', discountValue: 0, minOrderValue: 0, active: true }
@@ -541,7 +541,7 @@ const carouselForm = ref({ id: null, imageUrl: '', order: 0, active: true })
 
 const fetchCarouselImages = async () => {
   try {
-    const res = await fetch('http://localhost:3000/api/admin/carousel', { headers: authStore.getAuthHeaders() })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/carousel`, { headers: authStore.getAuthHeaders() })
     if (res.ok) carouselImages.value = await res.json()
   } catch (e) {}
 }
@@ -562,7 +562,7 @@ const handleCarouselSubmit = async () => {
       const compressedFile = await imageCompression(selectedFile.value, options);
       const filename = selectedFile.value.name.replace(/\.[^/.]+$/, "") + ".webp";
 
-      const presignRes = await fetch(`http://localhost:3000/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
+      const presignRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
       if (!presignRes.ok) throw new Error("Upload auth failed.")
       const presignData = await presignRes.json()
       
@@ -573,7 +573,7 @@ const handleCarouselSubmit = async () => {
     }
     
     const payload = { ...carouselForm.value, imageUrl: finalImageUrl }
-    const url = payload.id > 0 ? `http://localhost:3000/api/admin/carousel/${payload.id}` : `http://localhost:3000/api/admin/carousel`
+    const url = payload.id > 0 ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/carousel/${payload.id}` : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/carousel`
     const method = payload.id > 0 ? 'PUT' : 'POST'
     
     const res = await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -591,7 +591,7 @@ const handleCarouselSubmit = async () => {
 const deleteCarousel = async (id) => {
   if(!confirm('Are you sure you want to delete this slide?')) return;
   try {
-    const res = await fetch(`http://localhost:3000/api/admin/carousel/${id}`, { method: 'DELETE', headers: authStore.getAuthHeaders() })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/carousel/${id}`, { method: 'DELETE', headers: authStore.getAuthHeaders() })
     if(res.ok) fetchCarouselImages()
   } catch (e) {}
 }
@@ -599,7 +599,7 @@ const deleteCarousel = async (id) => {
 const deleteMenu = async (id) => {
   if(!confirm('Are you sure you want to delete this menu item?')) return;
   try {
-    const res = await fetch(`http://localhost:3000/api/admin/menu/${id}`, { method: 'DELETE', headers: authStore.getAuthHeaders() })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/menu/${id}`, { method: 'DELETE', headers: authStore.getAuthHeaders() })
     if(!res.ok) { let e = await res.json(); alert(e.error || 'Cannot delete item'); return; }
     fetchMenu()
   } catch(e) {}
@@ -608,7 +608,7 @@ const deleteMenu = async (id) => {
 const deleteAddon = async (id) => {
   if(!confirm('Are you sure you want to delete this addon?')) return;
   try {
-    const res = await fetch(`http://localhost:3000/api/admin/addons/${id}`, { method: 'DELETE', headers: authStore.getAuthHeaders() })
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons/${id}`, { method: 'DELETE', headers: authStore.getAuthHeaders() })
     if(!res.ok) { let e = await res.json(); alert(e.error || 'Cannot delete addon'); return; }
     fetchAddons()
   } catch(e) {}

@@ -183,7 +183,7 @@ const applyCoupon = async () => {
     isApplyingCoupon.value = true
     couponMessage.value = ''
     
-    const response = await fetch('http://localhost:3000/api/orders/applycoupon', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/applycoupon`, {
       method: 'POST',
       headers: authStore.getAuthHeaders(),
       body: JSON.stringify({ couponCode: couponCodeInput.value })
@@ -259,7 +259,7 @@ const placeOrder = async () => {
     
     // First: Fetch Razorpay Public Key from backend dynamically!
     // This stops you from having to hardcode it natively here in Vue every time you rotate keys.
-    const configResp = await fetch('http://localhost:3000/api/orders/config')
+    const configResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/config`)
     const configData = await configResp.json()
     const publicKeyId = configData.keyId
     
@@ -276,7 +276,7 @@ const placeOrder = async () => {
     }
     
     // Create the Order on the backend
-    const response = await fetch('http://localhost:3000/api/orders/', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/`, {
       method: 'POST',
       headers: authStore.getAuthHeaders(), 
       body: JSON.stringify(payload)
