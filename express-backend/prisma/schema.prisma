@@ -79,3 +79,10 @@ model Coupon {
   minOrderValue Float
   active        Boolean
 }
+
+model CarouselImage {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+}

@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { 
     getAllOrders, getActiveOrders, updateOrderStatus,
-    getAddons, createAddon, updateAddon,
-    createMenuItem, updateMenuItem,
+    getAddons, createAddon, updateAddon, deleteAddon,
+    createMenuItem, updateMenuItem, deleteMenuItem,
+    getCarouselImages, createCarouselImage, updateCarouselImage, deleteCarouselImage,
     getUploadUrl,
     createCoupon
 } from '../controllers/adminController';
@@ -21,10 +22,18 @@ router.put('/orders/:id/status', updateOrderStatus);
 router.get('/addons', getAddons);
 router.post('/addons', createAddon);
 router.put('/addons/:id', updateAddon);
+router.delete('/addons/:id', deleteAddon);
 
 // Menu
 router.post('/menu', createMenuItem);
 router.put('/menu/:id', updateMenuItem);
+router.delete('/menu/:id', deleteMenuItem);
+
+// Carousel / Offers
+router.get('/carousel', getCarouselImages);
+router.post('/carousel', createCarouselImage);
+router.put('/carousel/:id', updateCarouselImage);
+router.delete('/carousel/:id', deleteCarouselImage);
 
 // Storage
 router.get('/upload-url', getUploadUrl);

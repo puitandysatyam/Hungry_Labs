@@ -67,6 +67,15 @@
           
           <p class="menu-item-desc">{{ item.desc }}</p>
           
+          
+          <div v-if="item.addonList && item.addonList.length > 0" class="addons-container">
+            <p class="addons-title">Customize:</p>
+            <div v-for="addon in item.addonList" :key="addon.id" class="addon-check">
+              <input type="checkbox" :id="'addon-'+item.id+'-'+addon.id" :value="addon" v-model="item.selectedAddOnsLocal" />
+              <label :for="'addon-'+item.id+'-'+addon.id" style="cursor: pointer;">{{ addon.name }} (+₹{{ addon.price }})</label>
+            </div>
+          </div>
+          
           <div class="menu-card-footer">
             <span class="menu-item-price" v-if="!item.imageUrl">₹{{ item.price }}</span>
             <div v-else></div> <!-- spacer if price is on image -->
@@ -112,7 +121,8 @@ const fetchMenu = async () => {
     error.value = null
     const response = await fetch('http://localhost:3000/api/menu/')
     if (!response.ok) throw new Error('Failed to load menu')
-    menuItems.value = await response.json()
+    const data = await response.json()
+    menuItems.value = data.map(item => ({ ...item, selectedAddOnsLocal: [] }))
   } catch (err) {
     console.error(err)
     error.value = "Couldn't load the menu! Our chefs might be taking a break."
@@ -227,6 +237,16 @@ onMounted(() => {
 .menu-item-title { margin: 0; font-size: 1.3rem; line-height: 1.3; }
 .menu-item-desc { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px; flex: 1; line-height: 1.6;}
 .menu-card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 20px;}
+
+.addons-container {
+  margin-bottom: 16px;
+  background: rgba(0,0,0,0.02);
+  padding: 12px;
+  border-radius: 12px;
+}
+.addons-title { font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; color: var(--text-main); }
+.addon-check { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 0.9rem; color: var(--text-muted); }
+.addon-check input { accent-color: var(--brand-primary); cursor: pointer;}
 .menu-item-price { font-weight: 800; font-size: 1.25rem; color: var(--text-main); }
 
 .btn-add {

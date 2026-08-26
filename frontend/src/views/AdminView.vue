@@ -11,6 +11,7 @@
       <button :class="['tab-btn', { active: activeTab === 'menu' }]" @click="activeTab = 'menu'">Menu Items</button>
       <button :class="['tab-btn', { active: activeTab === 'addons' }]" @click="activeTab = 'addons'">Addons</button>
       <button :class="['tab-btn', { active: activeTab === 'coupons' }]" @click="activeTab = 'coupons'">Coupons</button>
+        <button :class="['tab-btn', { active: activeTab === 'carousel' }]" @click="activeTab = 'carousel'">Carousel/Offers</button>
     </div>
 
     <!-- ================= LIVE QUEUE TAB ================= -->
@@ -110,7 +111,10 @@
               <td>{{ item.category }}</td>
               <td>₹{{ item.price }}</td>
               <td>{{ item.veg ? 'Veg' : 'Non-Veg' }}</td>
-              <td><button @click="openMenuModal(item)" class="btn btn-secondary btn-sm">Edit</button></td>
+              <td>
+                  <button @click="openMenuModal(item)" class="btn btn-secondary btn-sm" style="margin-right:8px;">Edit</button>
+                  <button @click="deleteMenu(item.id)" class="btn btn-primary btn-sm" style="background:#d13d18;">Delete</button>
+                </td>
             </tr>
           </tbody>
         </table>
@@ -139,14 +143,88 @@
               <td>{{ addon.id }}</td>
               <td>{{ addon.name }}</td>
               <td>₹{{ addon.price }}</td>
-              <td><button @click="openAddonModal(addon)" class="btn btn-secondary btn-sm">Edit</button></td>
+              <td>
+                  <button @click="openAddonModal(addon)" class="btn btn-secondary btn-sm" style="margin-right:8px;">Edit</button>
+                  <button @click="deleteAddon(addon.id)" class="btn btn-primary btn-sm" style="background:#d13d18;">Delete</button>
+                </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- ================= COUPONS TAB ================= -->
+    
+      <!-- ================= CAROUSEL TAB ================= -->
+      <div v-if="activeTab === 'carousel'" class="tab-content card">
+        <div class="section-header">
+          <h3>Home Page Carousel Management</h3>
+          <button @click="openCarouselModal()" class="btn btn-primary">Add New Slide</button>
+        </div>
+        <div class="table-responsive mt-3">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Status</th>
+                <th>Order</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="slide in carouselImages" :key="slide.id">
+                <td><img :src="slide.imageUrl" class="table-img" style="width: 80px; height: auto;" /></td>
+                <td>{{ slide.active ? 'Active' : 'Hidden' }}</td>
+                <td>{{ slide.order }}</td>
+                <td>
+                  <button @click="openCarouselModal(slide)" class="btn btn-secondary btn-sm" style="margin-right:8px;">Edit</button>
+                  <button v-if="slide.id > 0" @click="deleteCarousel(slide.id)" class="btn btn-primary btn-sm" style="background:#d13d18;">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Carousel Modal -->
+      <div v-if="showCarouselModal" class="modal-overlay" @click.self="showCarouselModal = false">
+        <div class="modal-content card" style="max-width: 500px;">
+          <h3 class="mb-3">{{ carouselForm.id ? 'Edit Slide' : 'Add Slide' }}</h3>
+          <form @submit.prevent="handleCarouselSubmit" class="admin-form">
+            <div class="form-group image-upload-group">
+              <label>Banner Image</label>
+              <div class="upload-area" :class="{ 'has-file': selectedFile }">
+                <input type="file" @change="handleFileChange" accept="image/*" class="file-input" />
+                <span v-if="!selectedFile">Click to select new image...</span>
+                <span v-else class="text-brand font-weight-bold">{{ selectedFile.name }} (Ready to upload)</span>
+              </div>
+              <small v-if="carouselForm.imageUrl && !selectedFile" class="text-muted mt-1 d-block">Current image exists. Uploading a new one will replace it.</small>
+              <small class="text-muted mt-1 d-block">Or use local asset path like '/assets/Menu 1.png' (Leave file blank)</small>
+              <input type="text" v-model="carouselForm.imageUrl" placeholder="/assets/hero.png" class="form-input mt-2" v-if="!selectedFile" />
+            </div>
+            
+            <div class="form-row mt-2">
+              <div class="form-group flex-1">
+                <label>Order (Sequence)</label>
+                <input type="number" v-model="carouselForm.order" required class="form-input" />
+              </div>
+              <div class="form-group flex-1">
+                <label>Status</label>
+                <div class="checkbox-group" style="margin-top: 10px;">
+                  <input type="checkbox" v-model="carouselForm.active" />
+                  <span>Is Active</span>
+                </div>
+              </div>
+            </div>
+            <div class="modal-actions mt-4">
+              <button type="button" class="btn btn-secondary" @click="showCarouselModal = false">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="isUploading">{{ isUploading ? 'Saving...' : 'Save Slide' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+
+      <!-- ================= COUPONS TAB ================= -->
     <div v-if="activeTab === 'coupons'" class="tab-content card">
       <h3>Create Coupon Campaign</h3>
       <form @submit.prevent="handleCouponSubmit" class="admin-form mt-3">

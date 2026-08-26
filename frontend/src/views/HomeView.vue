@@ -23,9 +23,32 @@
         </div>
       </div>
       <div class="hero-image">
-        <!-- Modern illustrative abstract element if they don't have a specific hero asset -->
         <div class="hero-backdrop"></div>
-        <img src="/assets/hero.png" alt="Delicious Food" class="hero-img-element" onerror="this.src='/assets/Menu%201.png'" />
+        <!-- Dynamic Carousel -->
+        <div class="carousel-container" v-if="carouselImages.length">
+          <transition-group name="slide-fade" tag="div" class="carousel-wrapper">
+            <img 
+              v-for="(img, index) in carouselImages" 
+              v-show="index === currentSlide"
+              :key="'carousel-'+index" 
+              :src="img.imageUrl" 
+              class="hero-img-element carousel-img" 
+              alt="Delicious Food Offer"
+            />
+          </transition-group>
+          <!-- Carousel Indicators -->
+          <div class="carousel-indicators" v-if="carouselImages.length > 1">
+            <span 
+              v-for="(img, index) in carouselImages" 
+              :key="'ind-'+index" 
+              class="indicator" 
+              :class="{ active: index === currentSlide }"
+              @click="currentSlide = index"
+            ></span>
+          </div>
+        </div>
+        <!-- Fallback if backend empty -->
+        <img v-else src="/assets/hero.png" alt="Delicious Food" class="hero-img-element" />
       </div>
     </section>
 
@@ -43,7 +66,7 @@
           <div class="card offer-card">
             <div class="offer-icon">🥪</div>
             <h3>Sandwich Combo</h3>
-            <p>Buy any sandwich and get a Small Plain Salted Fries for just <strong>₹20</strong>!</p>
+            <p>Buy any sandwich and get a Small Plain Salted Fries for just <strong>₹120</strong>!</p>
           </div>
           <div class="card offer-card">
             <div class="offer-icon">🍟</div>
@@ -55,6 +78,41 @@
     </section>
   </div>
 </template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
+
+const carouselImages = ref([]);
+const currentSlide = ref(0);
+let slideInterval = null;
+
+const fetchCarousel = async () => {
+  try {
+    const res = await fetch('http://localhost:3000/api/menu/carousel');
+    if (res.ok) {
+      carouselImages.value = await res.json();
+      startCarousel();
+    }
+  } catch (e) {
+    console.error("Could not fetch carousel", e);
+  }
+};
+
+const startCarousel = () => {
+  if (carouselImages.value.length <= 1) return;
+  slideInterval = setInterval(() => {
+    currentSlide.value = (currentSlide.value + 1) % carouselImages.value.length;
+  }, 4000); // 4 seconds per slide
+};
+
+onMounted(() => {
+  fetchCarousel();
+});
+
+onUnmounted(() => {
+  if(slideInterval) clearInterval(slideInterval);
+})
+</script>
 
 <style scoped>
 .hero {
@@ -131,6 +189,57 @@
   filter: blur(40px);
 }
 
+.carousel-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.carousel-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1; /* keep it square/consistent */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.carousel-img {
+  position: absolute; /* allow overlays for proper transition */
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) perspective(1000px) rotateY(-8deg) rotateX(4deg);
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+.carousel-img:hover {
+  transform: translate(-50%, -50%) perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.02);
+}
+
+.carousel-indicators {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: -20px;
+  z-index: 10;
+}
+
+.indicator {
+  width: 12px; height: 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.indicator.active {
+  background: var(--brand-primary);
+  transform: scale(1.2);
+}
+
 .hero-img-element {
   max-width: 100%;
   height: auto;
@@ -142,6 +251,17 @@
 
 .hero-img-element:hover {
   transform: perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.02);
+}
+
+/* Animations for Carousel */
+.slide-fade-enter-active, .slide-fade-leave-active {
+  transition: all 0.8s ease;
+}
+.slide-fade-enter-from {
+  opacity: 0; transform: translate(-30%, -50%) perspective(1000px) rotateY(-15deg);
+}
+.slide-fade-leave-to {
+  opacity: 0; transform: translate(-70%, -50%) perspective(1000px) rotateY(0deg);
 }
 
 .offers-section {
@@ -214,5 +334,6 @@
   .hero-actions { justify-content: center; flex-direction: column;}
   .stats-row { justify-content: center; }
   .hero-img-element { transform: none; }
+  .carousel-img { transform: translate(-50%, -50%) !important; }
 }
 </style>

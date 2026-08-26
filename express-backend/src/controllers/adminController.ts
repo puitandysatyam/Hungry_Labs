@@ -13,7 +13,6 @@ const s3Client = new S3Client({
     }
 });
 
-// Helper for resetting Menu cache
 const invalidateMenuCache = async () => {
     if (redis) {
         try {
@@ -24,6 +23,15 @@ const invalidateMenuCache = async () => {
         }
     }
 };
+
+const invalidateCarouselCache = async () => {
+    if (redis) {
+        try {
+            await redis.del("menuCache::carouselOptions");
+            console.log("[Upstash] Admin changed Carousel. Cache cleared!");
+        } catch(e) {}
+    }
+}
 
 // -- ORDERS --
 export const getActiveOrders = async (req: Request, res: Response) => {
@@ -59,7 +67,6 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     } catch (e: any) { res.status(400).json(e.message); }
 };
 
-
 // -- ADDONS --
 export const getAddons = async (req: Request, res: Response) => {
     try {
@@ -74,7 +81,7 @@ export const createAddon = async (req: Request, res: Response) => {
         const addon = await prisma.addon.create({ data: { name, price: Number(price) } });
         await invalidateMenuCache();
         res.json(addon);
-    } catch (e: any) { console.log(e); res.status(400).json(e.message); }
+    } catch (e: any) { res.status(400).json(e.message); }
 };
 
 export const updateAddon = async (req: Request, res: Response) => {
@@ -87,64 +94,106 @@ export const updateAddon = async (req: Request, res: Response) => {
         });
         await invalidateMenuCache();
         res.json(addon);
-    } catch (e: any) { console.log(e); res.status(400).json(e.message); }
+    } catch (e: any) { res.status(400).json(e.message); }
 };
 
+export const deleteAddon = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await prisma.addon.delete({
+            where: { id: Number(id) }
+        });
+        await invalidateMenuCache();
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(400).json({ error: "Cannot delete addon currently in use by an order." });
+    }
+};
 
 // -- MENU ITEMS --
 export const createMenuItem = async (req: Request, res: Response) => {
     try {
-        // Vue frontend sends `isVeg`, `addonList` (array of full addon objects, not just IDs)
         const { category, name, desc, price, isVeg, imageUrl, addonList } = req.body;
-        
         const menuItem = await prisma.menuItem.create({
             data: {
-                category, 
-                name, 
-                desc, 
-                price: Number(price), 
-                veg: Boolean(isVeg), 
-                imageUrl,
-                addons: { 
-                    connect: addonList ? addonList.map((addon: any) => ({ id: addon.id })) : [] 
-                }
+                category, name, desc, price: Number(price), veg: Boolean(isVeg), imageUrl,
+                addons: { connect: addonList ? addonList.map((addon: any) => ({ id: addon.id })) : [] }
             }
         });
         await invalidateMenuCache();
         res.json(menuItem);
-    } catch (e: any) { 
-        console.log("Menu Create Error:", e);
-        res.status(400).json(e.message); 
-    }
+    } catch (e: any) { res.status(400).json(e.message); }
 };
 
 export const updateMenuItem = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { category, name, desc, price, isVeg, imageUrl, addonList } = req.body;
-        
         const menuItem = await prisma.menuItem.update({
             where: { id: Number(id) },
             data: {
-                category, 
-                name, 
-                desc, 
-                price: Number(price), 
-                veg: Boolean(isVeg), 
-                imageUrl,
-                addons: { 
-                    set: addonList ? addonList.map((addon: any) => ({ id: addon.id })) : [] 
-                }
+                category, name, desc, price: Number(price), veg: Boolean(isVeg), imageUrl,
+                addons: { set: addonList ? addonList.map((addon: any) => ({ id: addon.id })) : [] }
             }
         });
         await invalidateMenuCache();
         res.json(menuItem);
-    } catch (e: any) { 
-        console.log("Menu Update Error:", e);
-        res.status(400).json(e.message); 
+    } catch (e: any) { res.status(400).json(e.message); }
+};
+
+export const deleteMenuItem = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await prisma.menuItem.delete({
+            where: { id: Number(id) }
+        });
+        await invalidateMenuCache();
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(400).json({ error: "Cannot delete menu item currently attached to an order." });
     }
 };
 
+// -- CAROUSEL OPTIONS --
+export const getCarouselImages = async (req: Request, res: Response) => {
+    try {
+        const images = await prisma.carouselImage.findMany({ orderBy: { order: 'asc' } });
+        res.json(images);
+    } catch (e: any) { res.status(500).json(e.message); }
+};
+
+export const createCarouselImage = async (req: Request, res: Response) => {
+    try {
+        const { imageUrl, active, order } = req.body;
+        const image = await prisma.carouselImage.create({
+            data: { imageUrl, active: Boolean(active), order: Number(order || 0) }
+        });
+        await invalidateCarouselCache();
+        res.json(image);
+    } catch (e: any) { res.status(400).json(e.message); }
+};
+
+export const updateCarouselImage = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { imageUrl, active, order } = req.body;
+        const image = await prisma.carouselImage.update({
+            where: { id: Number(id) },
+            data: { imageUrl, active: Boolean(active), order: Number(order || 0) }
+        });
+        await invalidateCarouselCache();
+        res.json(image);
+    } catch (e: any) { res.status(400).json(e.message); }
+};
+
+export const deleteCarouselImage = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await prisma.carouselImage.delete({ where: { id: Number(id) } });
+        await invalidateCarouselCache();
+        res.json({ success: true });
+    } catch (e: any) { res.status(400).json(e.message); }
+};
 
 // -- B2 UPLOAD (PRESIGNED URL) --
 export const getUploadUrl = async (req: Request, res: Response) => {
@@ -159,15 +208,9 @@ export const getUploadUrl = async (req: Request, res: Response) => {
             Key: objectKey,
             ContentType: String(contentType || 'image/png')
         });
-
-        // Expires in 5 minutes (user must upload immediately)
         const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
-        
-        // Return both uploadUrl and finalUrl so frontend can save it
         res.json({ uploadUrl: presignedUrl, finalUrl: objectKey });
-    } catch (e: any) { 
-        res.status(500).json({ error: e.message }); 
-    }
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
 };
 
 // -- COUPONS --
