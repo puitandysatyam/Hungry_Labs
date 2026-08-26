@@ -29,6 +29,11 @@ public class AuthService {
     }
 
     public AuthResponseDto register(RegisterRequestDto request) {
+        // Check if user already exists
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already taken!");
+        }
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());

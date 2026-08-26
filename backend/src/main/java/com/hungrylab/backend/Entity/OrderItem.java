@@ -1,6 +1,6 @@
 package com.hungrylab.backend.Entity;
 
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
-
 
 @Entity
 @Table(name = "OrderItem")
@@ -24,6 +23,7 @@ public class OrderItem {
 
     @ManyToOne
     @JoinColumn(name = "orderId")
+    @JsonIgnore // Prevents infinite recursion when expanding the Order
     private Order order;
 
     @ManyToOne

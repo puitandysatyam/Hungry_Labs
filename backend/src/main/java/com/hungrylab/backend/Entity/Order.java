@@ -1,5 +1,6 @@
 package com.hungrylab.backend.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "UserID")
+    @JsonIgnore // Prevents infinite recursion and hides sensitive user data
     private User user;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)

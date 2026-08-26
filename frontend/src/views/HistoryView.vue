@@ -26,7 +26,7 @@
             <span class="order-id">Order #{{ order.id }}</span>
             <span class="order-date text-muted"> • {{ formatDate(order.createdAt) }}</span>
           </div>
-          <span :class="['status-badge', getStatusClass(order.status)]">{{ order.status }}</span>
+          <span :class="['status-badge', getStatusClass(order.status)]">{{ getFriendlyStatus(order.status) }}</span>
         </div>
 
         <div class="order-body">
@@ -91,10 +91,36 @@ onMounted(() => {
   fetchOrders()
 })
 
+const getFriendlyStatus = (status) => {
+  switch (status) {
+    case 'CONFIRMED': return 'Payment Successful - Preparing'
+    case 'DELIVERED': return 'Order Completed'
+    case 'PAYMENT_FAILED': return 'Payment Failed'
+    case 'CANCEL_PENDING': return 'Refund Processing'
+    case 'CANCELLED': return 'Order Canceled - Refunded'
+    case 'MANUAL_REVIEW_REQUIRED': return 'Refund Failed - Contact Support'
+    case 'ON_HOLD': return 'Payment Disputed - On Hold'
+    case 'PAYMENT PENDING': return 'Awaiting Payment'
+    default: return status
+  }
+}
+
 const getStatusClass = (status) => {
-  if (status === 'CONFIRMED' || status === 'DELIVERED') return 'status-green'
-  if (status === 'PAYMENT PENDING') return 'status-yellow'
-  return 'status-gray'
+  switch (status) {
+    case 'CONFIRMED': 
+    case 'DELIVERED': 
+      return 'status-green'
+    case 'PAYMENT PENDING': 
+    case 'CANCEL_PENDING': 
+    case 'ON_HOLD':
+      return 'status-yellow'
+    case 'CANCELLED': 
+    case 'PAYMENT_FAILED': 
+    case 'MANUAL_REVIEW_REQUIRED':
+      return 'status-red'
+    default: 
+      return 'status-gray'
+  }
 }
 
 // Very basic fallback date formatter (if backend doesn't send time, just show ID as reference)
@@ -116,6 +142,7 @@ const formatDate = (dateStr) => {
 .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
 .status-green { background: #d4edda; color: #155724; }
 .status-yellow { background: #fff3cd; color: #856404; }
+.status-red { background: #f8d7da; color: #721c24; }
 .status-gray { background: #e2e3e5; color: #383d41; }
 
 .order-body { padding: 24px; }

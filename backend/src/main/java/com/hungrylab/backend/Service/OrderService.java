@@ -105,7 +105,8 @@ public class OrderService {
             }
         }
 
-        totalAmount = Math.max(0, totalAmount);
+        // Fix Razorpay Crash: Razorpay API requires a minimum 1.00 INR charge (100 paise).
+        totalAmount = Math.max(1.0, totalAmount);
         newOrder.setTotalAmount(totalAmount);
         newOrder.setStatus("PAYMENT PENDING");
 
@@ -117,8 +118,10 @@ public class OrderService {
         RazorpayClient razorpayClient = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
         
         JSONObject paymentRequest = new JSONObject();
-        paymentRequest.put("amount", (int)(totalAmount * 100)); // paise
+        // Fix Math bug: Math.round prevents missing pence due to floating point imprecise representations.
+        paymentRequest.put("amount", Math.round(totalAmount * 100)); // paise
         paymentRequest.put("currency", "INR");
+        paymentRequest.put("receipt", "txn_" + System.currentTimeMillis()); 
         
         com.razorpay.Order rzpOrder = razorpayClient.orders.create(paymentRequest);
         payment.setRazorpayOrderId(rzpOrder.get("id").toString());
@@ -126,9 +129,6 @@ public class OrderService {
 
         paymentRepository.save(payment);
 
-        // Fix: OrderResponseDto expects (Long, String, Integer, String).
-        // The error was saying actual and formal argument lists differ in length!
-        // You were passing `newOrder.setStatus()` (which returns void) instead of `newOrder.getStatus()`!
         return new OrderResponseDto(newOrder.getId(), newOrder.getStatus(), 60, payment.getRazorpayOrderId());
     }
 }

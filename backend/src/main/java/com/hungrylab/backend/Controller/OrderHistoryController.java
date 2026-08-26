@@ -13,7 +13,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/orders/user")
-@CrossOrigin(origins = "*") 
 public class OrderHistoryController {
 
     private final OrderRepository orderRepository;

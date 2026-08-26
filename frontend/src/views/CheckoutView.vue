@@ -25,7 +25,7 @@
             
             <div class="item-meta">
               <span class="item-base-price">₹{{ item.menuItem.price }}</span>
-              <div v-if="item.selectedAddOns.length" class="item-addons text-muted">
+              <div v-if="item.selectedAddOns && item.selectedAddOns.length" class="item-addons text-muted">
                 + {{ item.selectedAddOns.map(a => a.name).join(', ') }} 
                 (₹{{ item.selectedAddOns.reduce((sum, a) => sum + a.price, 0) }})
               </div>
@@ -40,7 +40,7 @@
           </div>
           
           <div class="item-total">
-            ₹{{ ((item.menuItem.price + item.selectedAddOns.reduce((sum, a) => sum + a.price, 0)) * item.quantity).toFixed(2) }}
+            ₹{{ ((item.menuItem.price + (item.selectedAddOns ? item.selectedAddOns.reduce((sum, a) => sum + a.price, 0) : 0)) * item.quantity).toFixed(2) }}
           </div>
         </div>
       </div>
@@ -135,7 +135,7 @@
             class="btn btn-primary w-100 mt-4" 
             :disabled="isSubmitting || !isFormValid"
           >
-            {{ isSubmitting ? 'Initializing Payment...' : 'Proceed to Pay' }}
+            {{ isSubmitting ? 'Processing...' : 'Proceed to Pay' }}
           </button>
           
           <p v-if="orderStatus" class="status-msg mt-4" :class="orderStatus.type">
@@ -257,6 +257,14 @@ const placeOrder = async () => {
     isSubmitting.value = true
     orderStatus.value = null
     
+    // First: Fetch Razorpay Public Key from backend dynamically!
+    // This stops you from having to hardcode it natively here in Vue every time you rotate keys.
+    const configResp = await fetch('http://localhost:8080/api/orders/config')
+    const configData = await configResp.json()
+    const publicKeyId = configData.keyId
+    
+    if (!publicKeyId) throw new Error("Could not fetch Razorpay configuration.")
+
     const payload = {
       userId: authStore.user?.id || null, 
       customerName: formData.value.customerName,
@@ -267,21 +275,27 @@ const placeOrder = async () => {
       items: cartStore.getBackendPayload()
     }
     
+    // Create the Order on the backend
     const response = await fetch('http://localhost:8080/api/orders/', {
       method: 'POST',
       headers: authStore.getAuthHeaders(), 
       body: JSON.stringify(payload)
     })
     
-    if (!response.ok) throw new Error('Failed to place order')
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText || 'Failed to place order')
+    }
     
     const orderData = await response.json()
+    
+    // Load Razorpay Script
     const isLoaded = await loadRazorpay()
     if (!isLoaded) throw new Error('Razorpay SDK failed to load.')
 
+    // Launch UI
     const options = {
-      // INJECTING LIVE KEY ID SUPPLIED BY USER:
-      key: 'rzp_test_TTZO8LwtSgqMxf', 
+      key: publicKeyId, // Dynamically sourced from application.properties now!
       amount: finalCalculatedTotal.value * 100, 
       currency: "INR",
       name: "The Hungry Lab",
@@ -295,7 +309,6 @@ const placeOrder = async () => {
           text: `Payment Successful! Your Order #${orderData.orderId} is being prepared.`
         }
         cartStore.clearCart()
-        // If testing full flow, you can manually trigger /webhook test endpoint or assume real webhook handles it
       },
       prefill: {
         name: formData.value.customerName,
@@ -313,7 +326,7 @@ const placeOrder = async () => {
     
   } catch (error) {
     console.error("Order error:", error)
-    orderStatus.value = { type: 'error', text: 'Problem processing order: ' + error.message }
+    orderStatus.value = { type: 'error', text: '' + error.message }
   } finally {
     isSubmitting.value = false
   }

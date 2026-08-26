@@ -1,28 +1,35 @@
 :root {
-  --bg-primary: #fdf7e7;
+  /* Modern Web Color Palette */
+  --bg-primary: #f8fafc; /* Cool slightly off-white for a cleaner app feel */
   --bg-secondary: #ffffff;
-  --brand-primary: #e84a20;
-  --brand-primary-hover: #d13d18;
-  --brand-secondary: #2f5926;
-  --text-main: #1a1a1a;
-  --text-muted: #555555;
+  
+  --brand-primary: #ff5a30; /* Vibrant modern food-app orange */
+  --brand-primary-hover: #e54b25;
+  --brand-primary-light: #fff0ec;
+  
+  --brand-secondary: #10b981; /* Success/Veg green */
+  --brand-alert: #ef4444; /* Alert/Danger red */
+  
+  --text-main: #0f172a; /* Deep slate, better than harsh black */
+  --text-muted: #64748b; /* Accessible slate gray */
+  --border-color: #e2e8f0;
   
   --font-heading: 'Outfit', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
 
-  --border-radius: 12px;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-  --shadow-hover: 0 8px 24px rgba(232, 74, 32, 0.15);
+  --border-radius: 16px; /* modern softer radii */
+  --border-radius-sm: 8px;
   
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Polished Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  --shadow-hover: 0 14px 24px -4px rgba(255, 90, 48, 0.2);
+  
+  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: var(--font-body);
@@ -30,17 +37,20 @@ body {
   color: var(--text-main);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   font-weight: 800;
   line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 /* Typography Utilities */
 .text-brand { color: var(--brand-primary); }
 .text-green { color: var(--brand-secondary); }
+.text-muted { color: var(--text-muted); }
 .font-heading { font-family: var(--font-heading); }
 
 /* Common Components */
@@ -48,20 +58,22 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 24px;
-  border-radius: var(--border-radius);
-  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 30px; /* Pill shape for primary actions */
+  font-weight: 700;
   font-family: var(--font-heading);
   text-decoration: none;
   border: none;
   cursor: pointer;
   transition: var(--transition);
-  font-size: 1rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
 }
 
 .btn-primary {
   background-color: var(--brand-primary);
   color: white;
+  box-shadow: 0 4px 10px rgba(255, 90, 48, 0.2);
 }
 
 .btn-primary:hover {
@@ -71,12 +83,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary {
-  background-color: transparent;
+  background-color: white;
   color: var(--text-main);
-  border: 2px solid var(--text-main);
+  border: 2px solid var(--border-color);
 }
 
 .btn-secondary:hover {
+  border-color: var(--text-main);
   background-color: var(--text-main);
   color: white;
   transform: translateY(-2px);
@@ -86,19 +99,45 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--bg-secondary);
   border-radius: var(--border-radius);
   padding: 24px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   transition: var(--transition);
-  border: 2px solid transparent;
+  border: 1px solid var(--border-color);
 }
 
 .card:hover {
-  box-shadow: var(--shadow-md);
-  border-color: rgba(232, 74, 32, 0.1);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-4px);
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
 }
+
+/* Form inputs global */
+.form-control {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  transition: var(--transition);
+  background: white;
+  color: var(--text-main);
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-primary-light);
+}
+
+/* Base structural layout for spacing */
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 16px; }
+.mt-4 { margin-top: 24px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 16px; }
+.mb-4 { margin-bottom: 24px; }
+.text-center { text-align: center; }

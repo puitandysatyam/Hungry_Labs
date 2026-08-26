@@ -7,8 +7,11 @@ import com.hungrylab.backend.Repository.MenuRepository;
 import com.hungrylab.backend.dto.AddOnDto;
 import com.hungrylab.backend.dto.MenuItemResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,12 +19,23 @@ import java.util.List;
 public class MenuService {
 
     @Autowired
-    MenuRepository menuRepository;
+    private MenuRepository menuRepository;
+    
+    @Autowired
+    private StorageService storageService;
+
+    @Value("${B2_ENDPOINT}")
+    private String b2Endpoint;
+
+    @Value("${BUCKET_NAME}")
+    private String bucketName;
 
     public List<MenuItemResponseDto> getMenu(){
 
         List<MenuItemResponseDto> menuItemResponseDtoList = new ArrayList<>();
         List<MenuItem> menuItemList = menuRepository.findAll();
+
+        String baseStorageUrl = (b2Endpoint.endsWith("/") ? b2Endpoint : b2Endpoint + "/") + bucketName + "/";
 
         for( MenuItem menuItem : menuItemList){
 
@@ -32,6 +46,20 @@ public class MenuService {
                     addOnDtoList.add(new AddOnDto(addon.getId(), addon.getName(), addon.getPrice()));
                 }
             }
+            
+            String finalImageUrl = menuItem.getImageUrl();
+            // Auto-generate Pre-signed GET URL for private B2 endpoints on the fly!
+            if (finalImageUrl != null && finalImageUrl.startsWith(baseStorageUrl)) {
+                try {
+                    String objectKey = finalImageUrl.substring(baseStorageUrl.length());
+                    // Decode URL-encoded characters (like %20 -> space) otherwise S3 presigner fails with NoSuchKey
+                    objectKey = URLDecoder.decode(objectKey, StandardCharsets.UTF_8.name());
+                    finalImageUrl = storageService.generatePresignedGetUrl(objectKey);
+                } catch (Exception e) {
+                    System.err.println("Failed to presign URL for " + finalImageUrl);
+                }
+            }
+            
             menuItemResponseDtoList.add(new MenuItemResponseDto(
                     menuItem.getId(),
                     menuItem.getCategory(),
@@ -39,7 +67,7 @@ public class MenuService {
                     menuItem.getDesc(),
                     menuItem.getPrice(),
                     menuItem.isVeg(),
-                    menuItem.getImageUrl(),
+                    finalImageUrl,
                     addOnDtoList
             ));
 

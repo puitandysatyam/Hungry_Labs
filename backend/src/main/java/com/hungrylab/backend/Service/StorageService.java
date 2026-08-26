@@ -5,8 +5,10 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.net.URI;
@@ -52,6 +54,25 @@ public class StorageService {
         String url = presigner.presignPutObject(presignRequest).url().toString();
         presigner.close();
         
+        return url;
+    }
+    
+    public String generatePresignedGetUrl(String objectKey) {
+        S3Presigner presigner = getPresigner();
+
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(b2Bucket)
+                .key(objectKey)
+                .build();
+
+        GetObjectPresignRequest getObjectPresignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofHours(2)) // Frontend cache valid for 2 hours
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        String url = presigner.presignGetObject(getObjectPresignRequest).url().toString();
+        presigner.close();
+
         return url;
     }
 }

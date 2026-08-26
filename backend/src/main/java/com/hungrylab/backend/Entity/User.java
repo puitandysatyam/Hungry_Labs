@@ -1,5 +1,6 @@
 package com.hungrylab.backend.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,7 +14,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Entity
-@Table(name = "users") // Changed to 'users' because 'user' is a reserved keyword in PostgreSQL
+@Table(name = "users") 
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,7 +23,7 @@ public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id; // Fixed capitalization
+    private long id; 
 
     private String name;
     
@@ -31,45 +32,52 @@ public class User implements UserDetails {
     
     private String phone;
     
+    @JsonIgnore // NEVER SERALIZE PASSWORD TO JSON
     private String password;
 
     @ElementCollection 
-    private List<String> address; // Needs ElementCollection for a list of strings in JPA
+    private List<String> address; 
 
     @OneToMany(mappedBy = "user")
+    @JsonIgnore 
     private List<Order> orders;
     
-    // User or Admin roles
     private String role = "USER"; 
 
     // === Spring Security UserDetails Methods === //
     
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role));
     }
 
     @Override
+    @JsonIgnore
     public String getUsername() {
-        return email; // We use email as the core identifier for login
+        return email; 
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonLocked() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isEnabled() {
         return true;
     }

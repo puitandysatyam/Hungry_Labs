@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
-    items: [],
+    // Load from local storage initially
+    items: JSON.parse(localStorage.getItem('cartItems')) || [],
   }),
   getters: {
     cartCount: (state) => state.items.reduce((total, item) => total + item.quantity, 0),
@@ -15,6 +16,10 @@ export const useCartStore = defineStore('cart', {
     }, 0)
   },
   actions: {
+    syncToLocalStorage() {
+      localStorage.setItem('cartItems', JSON.stringify(this.items));
+    },
+
     addToCart(menuItem, selectedAddOns = [], quantity = 1) {
       // Create a unique hash for the item based on its ID and selected addons
       const addonIdsString = (selectedAddOns || []).map(a => a.id).sort().join('-');
@@ -32,25 +37,30 @@ export const useCartStore = defineStore('cart', {
           quantity
         });
       }
+      this.syncToLocalStorage();
     },
     
     removeFromCart(cartItemId) {
       this.items = this.items.filter(i => i.cartItemId !== cartItemId);
+      this.syncToLocalStorage();
     },
     
     updateQuantity(cartItemId, newQuantity) {
       const item = this.items.find(i => i.cartItemId === cartItemId);
       if (item) {
         if (newQuantity <= 0) {
+           // this uses removeFromCart, which saves for us
           this.removeFromCart(cartItemId);
         } else {
           item.quantity = newQuantity;
+          this.syncToLocalStorage();
         }
       }
     },
     
     clearCart() {
       this.items = [];
+      this.syncToLocalStorage();
     },
     
     // Build the clean payload that the backend expects
