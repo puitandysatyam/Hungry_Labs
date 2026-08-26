@@ -170,7 +170,10 @@ export const createCarouselImage = async (req: Request, res: Response) => {
         });
         await invalidateCarouselCache();
         res.json(image);
-    } catch (e: any) { res.status(400).json(e.message); }
+    } catch (e: any) { 
+        console.error("FATAL CREATE CAROUSEL:", e);
+        res.status(400).json({ error: e.message || String(e) }); 
+    }
 };
 
 export const updateCarouselImage = async (req: Request, res: Response) => {

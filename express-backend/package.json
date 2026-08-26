@@ -1,7 +1,7 @@
 {
   "name": "express-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "api/index.ts",
   "scripts": {
     "dev": "tsx watch api/index.ts",
     "build": "prisma generate && tsc",
@@ -38,6 +38,6 @@
     "@types/pg": "^8.11.11",
     "tsup": "^8.5.1",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
+    "typescript": "^5.7.3"
   }
 }
