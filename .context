@@ -1,5 +1,6 @@
 # ==============================================================================
 # THE HUNGRY LAB — CODEBASE CONTEXT (.context)
+# THE HUNGRY LAB — MASTER CODEBASE CONTEXT (.context)
 # ==============================================================================
 # This document provides a complete, self-contained overview of the codebase
 # for AI agents and developers. It details architecture, data models, domain
@@ -7,6 +8,10 @@
 # Master reference file for AI agents and developers. It details architecture,
 # data models, domain workflows, API contracts, caching, dual-backend setup,
 # and developer operational guides.
+# frontend views, and developer operational guides.
+# Comprehensive reference guide for AI agents and human developers.
+# Covers architecture, data models, domain workflows, API routing, client state,
+# environment variables, dual-backend parity, and developer runbooks.
 # ==============================================================================
 
 ## 1. Executive Summary
@@ -20,14 +25,27 @@
   - Coupon & discount engine supporting both FLAT and PERCENTAGE discounts with minimum order value criteria.
   - Razorpay payment gateway integration with payment order generation and cryptographic webhook signature verification (HMAC-SHA256).
   - Dynamic hero carousel managed directly from the Admin Command Center with client-side image compression.
+- **Current Production Backend:** Express.js 5 + Prisma ORM in `express-backend/` (targeted for Vercel Serverless / Edge deployment).
+- **Reference Legacy Backend:** Java 17 + Spring Boot 3.1.5 in `backend/` (original containerized implementation).
+- **Frontend:** Vue 3 (Composition API `<script setup>`), Vite 8, Pinia 4, Vue Router 4.
+- **Key Capabilities:**
+  - Interactive food menu with category filtering and customizable add-ons (extra cheese, sauces, dips).
+  - Client-side cart with persistent storage, coupled with strict server-side price recalculation to prevent tampering.
+  - Coupon & discount engine supporting FLAT and PERCENTAGE discounts with minimum order value criteria.
+  - Razorpay payment gateway integration with paise math and cryptographic webhook signature verification (HMAC-SHA256).
+  - Dynamic hero carousel managed from the Admin Command Center with client-side image compression.
   - Live kitchen command center with auto-refreshing (5s short polling) live order queue for order status progression.
   - Media management using Backblaze B2 (S3-compatible) with presigned PUT upload URLs.
   - Media management using Backblaze B2 (S3-compatible) with presigned PUT/GET upload and download URLs.
   - In-memory / Upstash Redis caching for menu items and carousel options.
   - IP-based rate-limiting middleware on authentication and sensitive endpoints.
+  - Sliding-window IP-based rate-limiting middleware on sensitive endpoints.
   - Automated database backup cron endpoint dumping tables into object storage.
   - Asynchronous email notifications on order confirmation using SMTP.
+  - Asynchronous email notifications (order confirmation and customer contact messages) via Nodemailer/SMTP driven completely by environment variables (`.env`).
   - Role-based access control (RBAC) with stateless JWT tokens distinguishing `USER` and `ADMIN`.
+  - Comprehensive customer pages: Dynamic Menu, Real-time Cart/Checkout, User Order History, Privacy Policy, Terms of Service, and Interactive Contact Us with FAQ.
+  - Full customer legal and support pages: Privacy Policy, Terms of Service, and Interactive Contact Us with FAQ.
 
 ---
 
@@ -61,7 +79,11 @@ Hungry_Labs/
 │   ├── tsconfig.json         # TypeScript compiler configuration (NodeNext, ESNext)
 │   ├── vercel.json           # Vercel serverless rewrite (/api/* -> /api/index.ts)
 │   ├── migration_log.md      # Migration changelog from Spring Boot to Express
+├── express-backend/          # CURRENT ACTIVE DEPLOYMENT BACKEND (Express 5 + Prisma + Vercel)
+│   ├── package.json          # Express 5, Prisma 7, @aws-sdk, ioredis, nodemailer, bcryptjs, jsonwebtoken, razorpay
+│   ├── tsconfig.json         # TypeScript configuration (NodeNext, ESNext)
 │   ├── vercel.json           # Vercel serverless rewrite (/api/* -> /api/index.ts) + cron backup job
+│   ├── .env.example          # Template for all environment variables (DB, Razorpay, S3, SMTP)
 │   ├── prisma/
 │   │   └── schema.prisma     # Prisma models mirroring PostgreSQL schema
 │   │   └── schema.prisma     # Prisma models: User, MenuItem, Addon, Order, OrderItem, Payment, Coupon, CarouselImage
@@ -79,9 +101,11 @@ Hungry_Labs/
 │       │   ├── adminController.ts   # Orders, Menu CRUD, Addon CRUD, Carousel CRUD, Presigned S3 URLs
 │       │   ├── authController.ts    # Register, Login, Make-Admin backdoor
 │       │   ├── backupController.ts  # Database backup cron controller
+│       │   ├── contactController.ts # Contact form submission & support config
 │       │   ├── menuController.ts    # Menu query, Carousel query
 │       │   ├── orderController.ts   # Order placement, Razorpay config, User order history
 │       │   └── paymentController.ts # Razorpay webhook processor
+│       │   └── paymentController.ts # Razorpay webhook processor & email dispatcher
 │       ├── middlewares/
 │       │   ├── auth.ts              # requireAuth, requireAdmin JWT middlewares
 │       │   └── rateLimiter.ts       # Sliding window IP-based rate limiter
@@ -89,19 +113,44 @@ Hungry_Labs/
 │       ├── services/         # Business logic (authService, menuService, orderService, paymentService)
 │       └── utils/jwt.ts      # JWT sign and verify helpers
 └── frontend/                 # Single-Page Application (SPA)
+│       ├── routes/           # Express routers: admin, auth, contact, menu, orders, payment
+│       ├── services/
+│       │   ├── authService.ts       # User registration, bcrypt authentication, token generation
+│       │   ├── emailService.ts      # Nodemailer SMTP order confirmations & contact inquiries
+│       │   ├── menuService.ts       # Menu & carousel querying with cache invalidation
+│       │   ├── orderService.ts      # Server-side pricing recalculation, Razorpay order generation
+│       │   └── paymentService.ts    # Webhook signature validation & order status updates
 │       └── utils/
 │           ├── jwt.ts        # JWT sign and verify helpers
 │           └── s3.ts         # AWS S3 / Backblaze B2 client and presigned URL helpers
+├── backend/                  # Reference Spring Boot 3 Java backend (original implementation)
+│   ├── Dockerfile            # Multi-stage Maven + Eclipse Temurin 17 JRE Alpine build
+│   ├── pom.xml               # Dependencies: Spring Data JPA, Security, Mail, AWS S3 SDK, Razorpay
+│   └── src/main/
+│       ├── java/com/hungrylab/backend/
+│       │   ├── BackendApplication.java
+│       │   ├── Controller/   # REST Controllers (Auth, Menu, Order, OrderHistory, Payment, Admin)
+│       │   ├── Entity/       # JPA Entities (User, MenuItem, Addon, Order, OrderItem, Payment, Coupon)
+│       │   ├── Repository/   # Spring Data JPA repositories
+│       │   ├── Security/     # Spring Security, JWT filters, BCrypt configuration
+│       │   ├── Service/      # Business logic (Auth, Menu, Order, Payment, Storage, Email)
+│       │   └── dto/          # Request/Response Data Transfer Objects
+│       └── resources/
+│           └── application.properties # DB, Mail, B2 Storage, Razorpay configurations
 └── frontend/                 # Vue 3 SPA
     ├── package.json          # Vue 3.5, Vue Router 4, Pinia 4, Vite 8
     ├── vite.config.js        # Vite config with '@' alias and '/b2api' proxy to Backblaze B2
     ├── index.html            # Main HTML wrapper (includes Razorpay checkout.js script injection)
     ├── vercel.json           # Vercel SPA routing rewrites
+    ├── .env.example          # VITE_API_URL, VITE_CONTACT_EMAIL, VITE_CONTACT_PHONE
     ├── index.html            # Main HTML wrapper (Razorpay checkout.js script injection)
     └── src/
         ├── App.vue           # Root component with Navbar, global AuthModal, Cart count, footer
+        ├── App.vue           # Root component with Navbar, global AuthModal, Cart count, footer with legal & contact links
         ├── main.js           # App bootstrapping (Pinia, Router)
         ├── style.css         # Global styling system, CSS variables, utility classes
+        ├── config/
+        │   └── contact.js    # Centralized dynamic contact email and phone helper sourced from env
         ├── router/index.js   # Route definitions and auth/admin route guards
         ├── stores/
         │   ├── auth.js       # Pinia store: JWT token, user info, localStorage sync, auth headers
@@ -116,12 +165,21 @@ Hungry_Labs/
             ├── HistoryView.vue   # Authenticated user order history with status badges
             └── AdminView.vue     # Kitchen command center: 5s Live Queue, Orders, Menu CRUD, Addons, Coupons
             └── AdminView.vue     # Kitchen command center: 5s Live Queue, Orders, Menu CRUD, Addon CRUD, Coupons, Carousel slides
+            ├── HomeView.vue           # Dynamic Carousel, hero, quick stats, promotions
+            ├── MenuView.vue           # Category filtering, food cards, addon tags, add-to-cart toasts
+            ├── CheckoutView.vue       # Cart summary, coupon validation, customer form, Razorpay checkout
+            ├── HistoryView.vue        # Authenticated user order history with status badges
+            ├── AdminView.vue          # Kitchen command center: 5s Live Queue, Orders, Menu CRUD, Addon CRUD, Coupons, Carousel slides
+            ├── PrivacyPolicyView.vue  # Full privacy disclosures, data protection rights, grievance officer
+            ├── TermsOfServiceView.vue # Ordering terms, kitchen workflows, cancellation & refund policies
+            └── ContactView.vue        # Interactive support inquiry form, hotline, location, and FAQ accordion
 ```
 
 ---
 
 ## 3. Dual-Backend Architecture & Migration Status
 ## 3. Dual-Backend Architecture & Feature Comparison
+## 3. Database Schema & Entities
 
 The project currently contains two backend implementations:
 
@@ -288,6 +346,7 @@ erDiagram
 ---
 
 ## 5. Core Business Workflows
+## 4. Core Business Workflows
 
 ### 5.1 Authentication & Authorization
 1. **Registration:** `POST /api/auth/register`
@@ -301,6 +360,7 @@ erDiagram
 4. **Token Security:**
    - Spring Boot: `JwtAuthenticationFilter` intercepts requests, validates `Authorization: Bearer <token>`, and sets `SecurityContextHolder`.
    - Express: `requireAuth` extracts and verifies token, `requireAdmin` checks `req.user.role === 'ADMIN'`.
+### 4.1 Authentication & Authorization
 1. **Registration:** `POST /api/auth/register` (Rate limited: 10 req / 15m)
    - Hashes password with BCrypt (10 rounds).
    - `admin@hungrylabs.com` automatically receives role `ADMIN`; all others default to `USER`.
@@ -318,6 +378,7 @@ erDiagram
 2. Backend returns list of menu items with nested `addOns` array.
 3. Response maps to DTO: `{ id, category, name, description, price, Veg, imageUrl, addOns: [{ id, name, price }] }`.
 ### 5.2 Menu Browsing, Carousel & Caching
+### 4.2 Menu Browsing, Carousel & Caching
 1. `GET /api/menu/` returns all menu items with joined addons. Cached in Redis (`menuCache::allMenuItems`, TTL 1h).
 2. `GET /api/menu/carousel` returns active carousel images ordered by display priority. Cached in Redis (`menuCache::carouselOptions`).
 3. Whenever an admin creates, edits, or deletes a menu item, addon, or carousel slide, the respective cache keys are purged automatically.
@@ -331,6 +392,7 @@ erDiagram
    - Multiplies item total by `quantity` and sums all line items.
    - Applies validated coupon discount if `totalAmount >= coupon.minOrderValue`.
    - Enforces a minimum charge of ₹1.00 (100 paise) to comply with Razorpay constraints.
+### 4.3 Cart & Price Calculation (Tamper-Resistant)
 1. **Frontend Estimate:** `useCartStore` calculates client totals for responsive UI.
 2. **Server-Side Recalculation:** `POST /api/orders/` only accepts `{ menuItemId, quantity, selectedAddOnIds }`.
 3. The server queries authoritative prices from the database for items and addons, computes line item subtotals, validates coupons against `minOrderValue`, and applies discounts.
@@ -363,6 +425,7 @@ erDiagram
        - `refund.failed` -> `REFUND_FAILED` / `MANUAL_REVIEW_REQUIRED`.
        - `payment.dispute.created` -> `DISPUTED` / `ON_HOLD`.
 ### 5.4 Razorpay Payment & Webhook Lifecycle
+### 4.4 Razorpay Payment & Webhook Lifecycle
 1. Frontend calls `GET /api/orders/config` to get public `keyId`.
 2. Frontend submits order to `POST /api/orders/`.
 3. Backend creates DB `Order` (`PENDING`) and calls Razorpay API to generate order (`amount` in paise integer).
@@ -372,6 +435,11 @@ erDiagram
 7. Backend verifies signature with HMAC-SHA256 against raw body buffer:
    - `payment.captured` / `order.paid` -> `Payment.status = 'SUCCESS'`, `Order.status = 'CONFIRMED'`.
    - `payment.failed` -> `Payment.status = 'FAILED'`, `Order.status = 'FAILED'`.
+   - `payment.captured` / `order.paid`:
+     - `Payment.status = 'SUCCESS'`, `Order.status = 'CONFIRMED'`.
+     - Automatically calls `emailService.sendOrderConfirmation(...)` to email the customer using SMTP configured in `.env`.
+   - `payment.failed`:
+     - `Payment.status = 'FAILED'`, `Order.status = 'FAILED'`.
    - Refunds and disputes update status accordingly.
 
 ### 5.5 Media Storage (Backblaze B2 S3 Integration)
@@ -380,6 +448,15 @@ erDiagram
 3. **Direct Upload:** Frontend uploads the image file directly to Backblaze B2 using the presigned URL.
 4. In local development, the frontend Vite configuration proxies `/b2api` to avoid CORS issues.
 ### 5.5 Backblaze B2 S3 Media Storage
+### 4.5 Customer Contact & Support Workflow
+1. Customer submits the inquiry form on `/contact`.
+2. Frontend sends `POST /api/contact` with `{ name, email, phone, category, orderId, message }`.
+3. `contactController` generates a unique support ticket ID (`HL-XXXXX`) and asynchronously dispatches:
+   - An alert email to the kitchen support team (`SUPPORT_EMAIL`).
+   - An acknowledgment email to the customer (`inquiry.email`).
+4. Contact details and phone hotlines on the website are dynamically driven by environment variables (`VITE_CONTACT_EMAIL`, `VITE_CONTACT_PHONE`).
+
+### 4.6 Backblaze B2 S3 Media Storage
 - Presigned upload URLs are generated via `GET /api/admin/upload-url?filename=...&contentType=...`.
 - Uses AWS S3 SDK Presigner with 15-minute expiration.
 - Frontend compresses images client-side before uploading directly to B2.
@@ -390,6 +467,7 @@ erDiagram
   - `CONFIRMED` -> click "Start Preparing" -> `PREPARING`
   - `PREPARING` -> click "Send for Delivery" -> `OUT_FOR_DELIVERY`
   - `OUT_FOR_DELIVERY` -> click "Mark Delivered" -> `DELIVERED`
+### 4.7 Admin Kitchen Command Center
 - **Live Queue:** Auto-polls every 5s (`GET /api/admin/orders/active`).
 - **Workflow Transitions:** Admin transitions orders (`CONFIRMED` -> `PREPARING` -> `OUT_FOR_DELIVERY` -> `DELIVERED`).
 - **Management Tabs:** Live Queue, Order History, Menu Items (with image upload/deletion), Addons (with deletion), Coupons, and Carousel Slides.
@@ -397,9 +475,11 @@ erDiagram
 ---
 
 ## 6. API Routing & Contracts
+## 5. API Routing & Contracts
 
 Base URL: `http://localhost:8080` (Spring Boot) or `http://localhost:3000` (Express)
 Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Express), or `VITE_API_URL` in production.
+Base URL: `VITE_API_URL` (defaults to `http://localhost:3000` in Express, or `http://localhost:8080` in Spring Boot)
 
 ### 6.1 Authentication (`/api/auth`)
 | Method | Endpoint | Auth | Request Body / Params | Response |
@@ -407,6 +487,7 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
 | `POST` | `/api/auth/register` | Public | `{ name, email, phone, password }` | `{ token, userId, name, role }` |
 | `POST` | `/api/auth/login` | Public | `{ email, password }` | `{ token, userId, name, role }` |
 | `GET` | `/api/auth/make-admin` | Public | Query: `?email=user@example.com` | Success/Failure string message |
+### 5.1 Authentication (`/api/auth`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Public (Rate Limited) | Create user account; returns JWT & role |
@@ -417,6 +498,7 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
 | Method | Endpoint | Auth | Request Body / Params | Response |
 |---|---|---|---|---|
 | `GET` | `/api/menu/` | Public | None | `MenuItemResponseDto[]` (items with addons) |
+### 5.2 Menu (`/api/menu`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/menu/` | Public | Returns menu items with addons (cached) |
@@ -429,6 +511,7 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
 | `POST` | `/api/orders/` | Public/Auth | `{ userId, customerName, customerEmail, customerPhone, deliveryAddress, couponCode, items: [{ menuItemId, quantity, selectedAddOnIds }] }` | `{ orderId, status, etaMinutes, razorpayOrderId }` |
 | `POST` | `/api/orders/applycoupon` | Auth | `{ couponCode: "..." }` | `{ valid, message, discountType, discountValue, minOrderValue }` |
 | `GET` | `/api/orders/user/:userId` | Auth (Self) | Path param: `userId` | `Order[]` with items and addons |
+### 5.3 Orders (`/api/orders`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/orders/config` | Public | Returns public Razorpay key ID |
@@ -440,9 +523,11 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
 | Method | Endpoint | Auth | Headers / Body | Response |
 |---|---|---|---|---|
 | `POST` | `/api/payment/webhook` | Public (Signature Verified) | Header: `x-razorpay-signature`<br>Body: Raw JSON payload | HTTP 200 (acknowledged) or 400 |
+### 5.4 Payment (`/api/payment`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `POST` | `/api/payment/webhook` | Raw Body | Validates HMAC-SHA256 signature and updates order status |
+| `POST` | `/api/payment/webhook` | Raw Body | Validates HMAC-SHA256 signature, confirms order, sends email |
 
 ### 6.5 Admin (`/api/admin`) — Requires `ADMIN` Role
 | Method | Endpoint | Auth | Description / Params | Response |
@@ -457,6 +542,13 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
 | `POST` | `/api/admin/addons` | Admin | Body: `Addon` entity | Created `Addon` |
 | `PUT` | `/api/admin/addons/:id` | Admin | Body: Updated `Addon` entity | Updated `Addon` |
 | `POST` | `/api/admin/coupons` | Admin | Body: `Coupon` entity | Created `Coupon` |
+### 5.5 Contact & Inquiries (`/api/contact`)
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/contact` | Public | Submits support ticket & triggers email notifications |
+| `GET` | `/api/contact/config` | Public | Returns support contact email & phone from env |
+
+### 5.6 Admin (`/api/admin`) — Requires `ADMIN` Role
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/admin/orders` | Fetch all historical orders |
@@ -477,6 +569,7 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
 | `DELETE` | `/api/admin/carousel/:id` | Delete carousel banner |
 
 ### 6.6 Backup (`/api/backup`)
+### 5.7 Backup (`/api/backup`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/backup/database` | CRON_SECRET | Exports JSON dump of database tables to S3 bucket |
@@ -484,6 +577,7 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
 ---
 
 ## 7. Frontend Architecture (Vue 3 SPA)
+## 6. Environment Variables Reference
 
 - **Framework:** Vue 3 (Composition API `<script setup>`) with Vite and Pinia.
 - **Entry Point:** `frontend/src/main.js` instantiates app, registers router and Pinia.
@@ -511,10 +605,23 @@ Base URL: `http://localhost:8080` (Spring Boot), `http://localhost:3000` (Expres
   - `CheckoutView.vue`: Cart review, coupon field, address inputs, Razorpay checkout modal trigger.
   - `HistoryView.vue`: List of previous orders with real-time status badges.
   - `AdminView.vue`: Tabbed command center covering Live Queue, History, Menu CRUD, Addon CRUD, Coupons, and Carousel management.
+  - `PrivacyPolicyView.vue`: Full privacy disclosures under Indian IT Act, data collection transparency, Razorpay PCI-DSS security, and grievance officer details.
+  - `TermsOfServiceView.vue`: Terms of service, kitchen ordering workflow, perishable cancellation/refund policy, and allergen warnings.
+  - `ContactView.vue`: Kitchen hotline, email support, interactive inquiry submission with automatic ticket ID generation, and FAQ accordion.
+### 6.1 Express Backend (`express-backend/.env`)
+```env
+# Database (PostgreSQL / Neon)
+DATABASE_URL="postgresql://user:password@endpoint.neon.tech/dbname?sslmode=require"
 
 ---
+# JWT Authentication
+JWT_SECRET="404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"
 
 ## 8. Configuration & Environment Variables
+# Razorpay Gateway
+RAZORPAY_KEY_ID="rzp_test_YOUR_KEY_HERE"
+RAZORPAY_KEY_SECRET="YOUR_SECRET_HERE"
+RAZORPAY_WEBHOOK_SECRET="YOUR_WEBHOOK_SECRET"
 
 ### 8.1 Spring Boot (`backend/src/main/resources/application.properties`)
 ```properties
@@ -524,6 +631,14 @@ spring.datasource.username=postgres
 spring.datasource.password=password
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
+# Email & Contact Communications (Non-hardcoded)
+EMAIL_FROM="thehungrylab.kitchen@gmail.com"
+SUPPORT_EMAIL="thehungrylab.kitchen@gmail.com"
+SUPPORT_PHONE="6291872593"
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="thehungrylab.kitchen@gmail.com"
+SMTP_PASS="your_gmail_app_password"
 
 # SMTP Mail
 spring.mail.host=smtp.gmail.com
@@ -560,9 +675,11 @@ B2_APPLICATION_KEY="K005JBwlgi/69YyLFxvN55gtYkCJ7gg"
 B2_ENDPOINT="https://s3.us-east-005.backblazeb2.com"
 
 # Optional Upstash Redis
+# Redis / Upstash (Optional)
 REDIS_URL="rediss://default:password@endpoint.upstash.io:6379"
 
 # Vercel / Runtime
+# Runtime
 NODE_ENV="development"
 PORT=3000
 CRON_SECRET="optional_backup_cron_secret"
@@ -574,45 +691,65 @@ CRON_SECRET="optional_backup_cron_secret"
 - `redis`: Image `redis:7-alpine`, port `6379:6379`.
 - `backend`: Built from `./backend/Dockerfile`, port `8080:8080`.
 ### 8.2 Frontend (`frontend/.env`)
+### 6.2 Frontend (`frontend/.env`)
 ```env
 VITE_API_URL="http://localhost:3000" # Or https://your-backend.vercel.app
+# API URL
+VITE_API_URL="http://localhost:3000"
+
+# Dynamic Contact Information
+VITE_CONTACT_EMAIL="thehungrylab.kitchen@gmail.com"
+VITE_CONTACT_PHONE="6291872593"
 ```
 
 ---
 
 ## 9. Developer & Agent Operational Cheatsheet
+## 7. Developer & Agent Operational Cheatsheet
 
 ### 9.1 Starting Services
 
 #### Running with Docker:
 ### 9.1 Starting the Express Backend
+### 7.1 Running the Active Stack
 ```bash
 docker-compose up -d postgres pgadmin redis
 ```
+# Backend (Express)
+cd express-backend
+npm run dev
 
 #### Running Spring Boot Backend:
 ```bash
 cd backend
 ./mvnw spring-boot:run
 # Listens on http://localhost:8080
+# Frontend (Vue 3 / Vite)
+cd frontend
+npm run dev
 ```
 
 #### Running Express Backend:
+### 7.2 Testing & Build Commands
 ```bash
+# Typecheck & build Express backend
 cd express-backend
 npx prisma generate
 npx tsx api/index.ts
 # Listens on http://localhost:3000
 npm run dev # or: npx tsx api/index.ts
 ```
+npx tsc --noEmit
 
 #### Running Frontend:
 ### 9.2 Starting the Frontend
 ```bash
+# Build Frontend production bundle
 cd frontend
 npm install
 npm run dev
 # Listens on http://localhost:5173
+npm run build
 ```
 
 ### 9.2 Key Gotchas & Troubleshooting for Agents

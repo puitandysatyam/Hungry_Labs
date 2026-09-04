@@ -7,6 +7,7 @@ import menuRoutes from '../src/routes/menu';
 import orderRoutes from '../src/routes/orders';
 import adminRoutes from '../src/routes/admin';
 import paymentRoutes from '../src/routes/payment';
+import contactRoutes from '../src/routes/contact';
 import { rateLimiterMiddleware } from '../src/middlewares/rateLimiter';
 
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/contact', contactRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 3000;

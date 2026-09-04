@@ -19,7 +19,7 @@ public class EmailService {
     public void sendOrderConfirmation(String toEmail, String customerName, Long orderId, String paymentId, double amount) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("hello@hungrylabs.com"); // Usually replaced by your actual authenticated email
+            message.setFrom("thehungrylab.kitchen@gmail.com");
             message.setTo(toEmail);
             message.setSubject("Hungry Labs: Order #" + orderId + " Confirmed!");
             

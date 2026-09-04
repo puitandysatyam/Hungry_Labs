@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import prisma from '../config/db';
+import { sendOrderConfirmation } from './emailService';
 
 export const processWebhook = async (payloadText: string, signature: string): Promise<boolean> => {
     try {
@@ -28,7 +29,7 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
         if (!payment) return true; // Could be an old order or mismatch, return true so Razorpay stops retrying
 
         if (event === 'payment.captured' || event === 'payment.authorized') {
-            await prisma.$transaction([
+            const [, updatedOrder] = await prisma.$transaction([
                 prisma.payment.update({
                     where: { id: payment.id },
                     data: { status: "SUCCESS", razorpayPaymentId: rzpPaymentId }
@@ -38,6 +39,16 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
                     data: { status: "CONFIRMED" }
                 })
             ]);
+
+            if (updatedOrder.customerEmail) {
+                sendOrderConfirmation(
+                    updatedOrder.customerEmail,
+                    updatedOrder.customerName || '',
+                    updatedOrder.id,
+                    rzpPaymentId,
+                    updatedOrder.totalAmount
+                ).catch(err => console.error("Error triggering order confirmation email:", err));
+            }
         } else if (event === 'payment.failed') {
             await prisma.$transaction([
                 prisma.payment.update({

@@ -43,6 +43,9 @@
           <a href="#">Privacy Policy</a>
           <a href="#">Terms of Service</a>
           <a href="#">Contact Us</a>
+          <router-link to="/privacy">Privacy Policy</router-link>
+          <router-link to="/terms">Terms of Service</router-link>
+          <router-link to="/contact">Contact Us</router-link>
         </div>
       </div>
     </footer>

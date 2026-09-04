@@ -26,6 +26,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^10.0.0",
     "pg": "^8.13.3",
     "prisma": "^7.10.0",
     "razorpay": "^2.9.8"
@@ -36,6 +37,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.3.0",
+    "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.11.11",
     "tsup": "^8.5.1",
     "tsx": "^4.23.12",

@@ -9,7 +9,10 @@ const router = createRouter({
     { path: '/menu', name: 'menu', component: () => import('../views/MenuView.vue') },
     { path: '/checkout', name: 'checkout', component: () => import('../views/CheckoutView.vue') },
     { path: '/history', name: 'history', component: () => import('../views/HistoryView.vue'), meta: { requiresAuth: true } },
-    { path: '/admin', name: 'admin', component: () => import('../views/AdminView.vue'), meta: { requiresAdmin: true } }
+    { path: '/admin', name: 'admin', component: () => import('../views/AdminView.vue'), meta: { requiresAdmin: true } },
+    { path: '/privacy', name: 'privacy', component: () => import('../views/PrivacyPolicyView.vue'), alias: '/privacy-policy' },
+    { path: '/terms', name: 'terms', component: () => import('../views/TermsOfServiceView.vue'), alias: '/terms-of-service' },
+    { path: '/contact', name: 'contact', component: () => import('../views/ContactView.vue'), alias: '/contact-us' }
   ]
 })
 
