@@ -257,13 +257,15 @@ const placeOrder = async () => {
     isSubmitting.value = true
     orderStatus.value = null
     
-    // First: Fetch Razorpay Public Key from backend dynamically!
-    // This stops you from having to hardcode it natively here in Vue every time you rotate keys.
-    const configResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/config`)
-    const configData = await configResp.json()
-    const publicKeyId = configData.keyId
+    // Sourced from frontend environment variable with backend dynamic fallback
+    let publicKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID
+    if (!publicKeyId) {
+      const configResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/config`)
+      const configData = await configResp.json()
+      publicKeyId = configData.keyId
+    }
     
-    if (!publicKeyId) throw new Error("Could not fetch Razorpay configuration.")
+    if (!publicKeyId) throw new Error("Could not load Razorpay Key ID.")
 
     const payload = {
       userId: authStore.user?.id || null, 
@@ -353,7 +355,16 @@ const placeOrder = async () => {
         email: formData.value.customerEmail,
         contact: formData.value.customerPhone
       },
-      theme: { color: "#e84a20" }
+      theme: { color: "#e84a20" },
+      modal: {
+        ondismiss: function () {
+          orderStatus.value = {
+            type: 'error',
+            text: 'Payment window was closed. You can complete your order anytime.'
+          }
+          isSubmitting.value = false
+        }
+      }
     }
 
     const rzp1 = new window.Razorpay(options)

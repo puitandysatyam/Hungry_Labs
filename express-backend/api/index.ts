@@ -9,6 +9,7 @@ import adminRoutes from '../src/routes/admin';
 import paymentRoutes from '../src/routes/payment';
 import contactRoutes from '../src/routes/contact';
 import { rateLimiterMiddleware } from '../src/middlewares/rateLimiter';
+import { createRazorpayOrder, verifyPaymentSignatureDirect } from '../src/controllers/paymentController';
 
 const app = express();
 
@@ -32,14 +33,12 @@ const allowedOrigins = [
 ];
 
 if (process.env.FRONTEND_URL) {
-  // Normalize by removing any trailing slash
   const cleanFrontendUrl = process.env.FRONTEND_URL.replace(/\/+$/, '');
   allowedOrigins.push(cleanFrontendUrl);
 }
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow non-browser tools (e.g. server-to-server, curl, Postman) where origin is undefined
     if (!origin) return callback(null, true);
 
     const isExplicitlyAllowed = allowedOrigins.includes(origin);
@@ -65,6 +64,10 @@ app.use(express.json({ limit: '1mb' }));
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Express backend running on Vercel" });
 });
+
+// Standard Direct Razorpay Endpoints (as per integration specification)
+app.post('/api/create-order', createRazorpayOrder);
+app.post('/api/verify-payment', verifyPaymentSignatureDirect);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
