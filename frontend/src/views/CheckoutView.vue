@@ -257,15 +257,23 @@ const placeOrder = async () => {
     isSubmitting.value = true
     orderStatus.value = null
     
-    // Sourced from frontend environment variable with backend dynamic fallback
-    let publicKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID
+    // Sourced from frontend environment variable (must be valid rzp_ key) or fallback to backend
+    const envKey = (import.meta.env.VITE_RAZORPAY_KEY_ID || '').trim()
+    let publicKeyId = (envKey.startsWith('rzp_test_') || envKey.startsWith('rzp_live_')) ? envKey : null
+
     if (!publicKeyId) {
       const configResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/config`)
-      const configData = await configResp.json()
-      publicKeyId = configData.keyId
+      if (configResp.ok) {
+        const configData = await configResp.json()
+        if (configData.keyId && (configData.keyId.startsWith('rzp_test_') || configData.keyId.startsWith('rzp_live_'))) {
+          publicKeyId = configData.keyId
+        }
+      }
     }
     
-    if (!publicKeyId) throw new Error("Could not load Razorpay Key ID.")
+    if (!publicKeyId) {
+      throw new Error("Invalid Razorpay Key ID configured. Key must begin with rzp_test_ or rzp_live_.")
+    }
 
     const payload = {
       userId: authStore.user?.id || null, 
