@@ -4,7 +4,7 @@ import {
     getAddons, createAddon, updateAddon, deleteAddon,
     createMenuItem, updateMenuItem, deleteMenuItem,
     getCarouselImages, createCarouselImage, updateCarouselImage, deleteCarouselImage,
-    getUploadUrl,
+    getUploadUrl, uploadDirectToCloudinary,
     createCoupon
 } from '../controllers/adminController';
 import { createBackup } from '../controllers/backupController';
@@ -39,8 +39,9 @@ router.post('/carousel', createCarouselImage);
 router.put('/carousel/:id', updateCarouselImage);
 router.delete('/carousel/:id', deleteCarouselImage);
 
-// Storage
+// Storage & Cloudinary Uploads
 router.get('/upload-url', getUploadUrl);
+router.post('/cloudinary-upload', uploadDirectToCloudinary);
 
 // Coupons
 router.post('/coupons', createCoupon);

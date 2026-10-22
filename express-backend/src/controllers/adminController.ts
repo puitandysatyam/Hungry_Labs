@@ -4,6 +4,7 @@ import redis from '../config/redis';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, generatePresignedUrl, getBucketName } from '../utils/s3';
+import { isCloudinaryConfigured, generateCloudinarySignature, uploadToCloudinary } from '../utils/cloudinary';
 
 const invalidateMenuCache = async () => {
     if (redis) {
@@ -194,10 +195,21 @@ export const deleteCarouselImage = async (req: Request, res: Response) => {
     } catch (e: any) { res.status(400).json(e.message); }
 };
 
-// -- B2 UPLOAD (PRESIGNED URL) --
+// -- CLOUD STORAGE UPLOAD (CLOUDINARY / B2) --
 export const getUploadUrl = async (req: Request, res: Response) => {
     try {
-        const { filename, contentType } = req.query;
+        const { filename, contentType, folder = 'hungry-lab/menu' } = req.query;
+
+        // Preferred: Cloudinary Edge CDN direct signed upload
+        if (isCloudinaryConfigured()) {
+            const cloudinaryData = generateCloudinarySignature(String(folder));
+            return res.json({
+                provider: 'cloudinary',
+                ...cloudinaryData
+            });
+        }
+
+        // Fallback: Legacy B2 S3 storage
         if (!filename) return res.status(400).json({ error: "Filename required" });
 
         const objectKey = `menu-images/${crypto.randomUUID()}-${filename}`;
@@ -208,8 +220,21 @@ export const getUploadUrl = async (req: Request, res: Response) => {
             ContentType: String(contentType || 'image/png')
         });
         const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
-        res.json({ uploadUrl: presignedUrl, finalUrl: objectKey });
+        res.json({ provider: 'b2', uploadUrl: presignedUrl, finalUrl: objectKey });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
+export const uploadDirectToCloudinary = async (req: Request, res: Response) => {
+    try {
+        const { image, folder = 'hungry-lab/menu' } = req.body;
+        if (!image) {
+            return res.status(400).json({ error: "Image data is required." });
+        }
+        const finalUrl = await uploadToCloudinary(image, String(folder));
+        res.json({ success: true, url: finalUrl });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message || "Cloudinary upload failed." });
+    }
 };
 
 // -- COUPONS --

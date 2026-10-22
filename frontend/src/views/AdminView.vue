@@ -459,23 +459,65 @@ const openMenuModal = (item = null) => {
 
 const handleFileChange = (e) => { if (e.target.files.length > 0) selectedFile.value = e.target.files[0] }
 
+// Unified High-Speed Image Upload (Cloudinary with B2 fallback)
+const uploadSelectedFile = async (file, folder = 'hungry-lab/menu') => {
+  const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true, fileType: 'image/webp' };
+  const compressedFile = await imageCompression(file, options);
+  const filename = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+
+  const presignRes = await fetch(
+    `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/upload-url?filename=${encodeURIComponent(filename)}&folder=${encodeURIComponent(folder)}&contentType=image/webp`,
+    { headers: authStore.getAuthHeaders() }
+  );
+
+  if (!presignRes.ok) throw new Error("Upload authorization failed.");
+  const presignData = await presignRes.json();
+
+  // 1. High-speed Cloudinary direct upload
+  if (presignData.provider === 'cloudinary') {
+    const formData = new FormData();
+    formData.append('file', compressedFile);
+    formData.append('api_key', presignData.apiKey);
+    formData.append('timestamp', presignData.timestamp);
+    formData.append('signature', presignData.signature);
+    formData.append('folder', presignData.folder);
+
+    const cldRes = await fetch(presignData.uploadUrl, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!cldRes.ok) {
+      const errText = await cldRes.text();
+      throw new Error("Cloudinary upload failed: " + errText);
+    }
+
+    const cldJson = await cldRes.json();
+    return cldJson.secure_url.replace('/image/upload/', '/image/upload/f_auto,q_auto/');
+  }
+
+  // 2. Legacy B2 S3 storage fallback
+  const uploadUrl = presignData.uploadUrl;
+  const targetUrl = uploadUrl.includes("backblazeb2.com") && import.meta.env.DEV
+    ? uploadUrl.replace("https://s3.us-east-005.backblazeb2.com", "/b2api")
+    : uploadUrl;
+
+  const uploadRes = await fetch(targetUrl, {
+    method: 'PUT',
+    body: compressedFile,
+    headers: { 'Content-Type': 'image/webp' }
+  });
+
+  if (!uploadRes.ok) throw new Error("Cloud upload failed.");
+  return presignData.finalUrl;
+};
+
 const handleMenuSubmit = async () => {
   isUploading.value = true; menuStatus.value = ''
   try {
     let finalImageUrl = menuForm.value.imageUrl;
     if (selectedFile.value) {
-      const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1200, useWebWorker: true, fileType: 'image/webp' };
-      const compressedFile = await imageCompression(selectedFile.value, options);
-      const filename = selectedFile.value.name.replace(/\.[^/.]+$/, "") + ".webp";
-
-      const presignRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
-      if (!presignRes.ok) throw new Error("Upload auth failed.")
-      const presignData = await presignRes.json()
-      
-      const proxiedUploadUrl = presignData.uploadUrl.replace("https://s3.us-east-005.backblazeb2.com", "/b2api")
-      const uploadRes = await fetch(proxiedUploadUrl, { method: 'PUT', body: compressedFile, headers: { 'Content-Type': 'image/webp' } })
-      if (!uploadRes.ok) throw new Error("Cloud upload failed.")
-      finalImageUrl = presignData.finalUrl
+      finalImageUrl = await uploadSelectedFile(selectedFile.value, 'hungry-lab/menu');
     }
     
     const payload = { ...menuForm.value, imageUrl: finalImageUrl }
@@ -557,20 +599,8 @@ const handleCarouselSubmit = async () => {
   isUploading.value = true
   try {
     let finalImageUrl = carouselForm.value.imageUrl;
-    // Handle cloud upload if user selected a file
     if (selectedFile.value) {
-      const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1200, useWebWorker: true, fileType: 'image/webp' };
-      const compressedFile = await imageCompression(selectedFile.value, options);
-      const filename = selectedFile.value.name.replace(/\.[^/.]+$/, "") + ".webp";
-
-      const presignRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/upload-url?filename=${encodeURIComponent(filename)}&contentType=image/webp`, { headers: authStore.getAuthHeaders() })
-      if (!presignRes.ok) throw new Error("Upload auth failed.")
-      const presignData = await presignRes.json()
-      
-      const proxiedUploadUrl = presignData.uploadUrl.replace("https://s3.us-east-005.backblazeb2.com", "/b2api")
-      const uploadRes = await fetch(proxiedUploadUrl, { method: 'PUT', body: compressedFile, headers: { 'Content-Type': 'image/webp' } })
-      if (!uploadRes.ok) throw new Error("Cloud upload failed.")
-      finalImageUrl = presignData.finalUrl
+      finalImageUrl = await uploadSelectedFile(selectedFile.value, 'hungry-lab/carousel');
     }
     
     const payload = { ...carouselForm.value, imageUrl: finalImageUrl }
