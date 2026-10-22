@@ -3,7 +3,7 @@ import prisma from '../config/db';
 import redis from '../config/redis';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3Client, generatePresignedUrl } from '../utils/s3';
+import { s3Client, generatePresignedUrl, getBucketName } from '../utils/s3';
 
 const invalidateMenuCache = async () => {
     if (redis) {
@@ -203,7 +203,7 @@ export const getUploadUrl = async (req: Request, res: Response) => {
         const objectKey = `menu-images/${crypto.randomUUID()}-${filename}`;
         
         const command = new PutObjectCommand({
-            Bucket: process.env.BUCKET_NAME || 'HungryLab-WebsiteFiles',
+            Bucket: getBucketName(),
             Key: objectKey,
             ContentType: String(contentType || 'image/png')
         });

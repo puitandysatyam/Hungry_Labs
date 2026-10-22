@@ -56,6 +56,11 @@
           <button @click="resetForm" class="btn btn-primary mt-3">Send Another Message</button>
         </div>
 
+        <!-- Error Alert -->
+        <div v-if="submitError" class="card mb-4" style="background-color: #fff5f5; border: 1px solid #fed7d7; color: #c53030; padding: 12px 16px; border-radius: 8px;">
+          <p style="margin: 0; font-weight: 500;">{{ submitError }}</p>
+        </div>
+
         <!-- Contact Form Fields -->
         <form v-else @submit.prevent="handleSubmit" class="contact-form">
           <div class="form-row">
@@ -200,6 +205,7 @@ const form = ref({
 const isSubmitting = ref(false)
 const submitted = ref(false)
 const ticketId = ref('')
+const submitError = ref('')
 
 const openFaq = ref(0) // First FAQ open by default
 
@@ -241,6 +247,7 @@ onMounted(() => {
 
 const handleSubmit = async () => {
   isSubmitting.value = true
+  submitError.value = ''
   
   try {
     const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/contact`, {
@@ -248,16 +255,16 @@ const handleSubmit = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form.value)
     })
-    if (res.ok) {
-      const data = await res.json()
-      ticketId.value = data.ticketId || ('HL-' + Math.floor(10000 + Math.random() * 90000))
-    } else {
-      ticketId.value = 'HL-' + Math.floor(10000 + Math.random() * 90000)
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}))
+      throw new Error(errData.error || 'Failed to submit inquiry.')
     }
-  } catch {
-    ticketId.value = 'HL-' + Math.floor(10000 + Math.random() * 90000)
-  } finally {
+    const data = await res.json()
+    ticketId.value = data.ticketId || ('HL-' + Math.floor(10000 + Math.random() * 90000))
     submitted.value = true
+  } catch (err) {
+    submitError.value = err.message || `Could not connect to support servers. Please call us directly at ${FORMATTED_PHONE}.`
+  } finally {
     isSubmitting.value = false
   }
 }

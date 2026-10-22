@@ -92,8 +92,13 @@ const handleSubmit = async () => {
     })
     
     if (!res.ok) {
-      const msg = await res.text()
-      throw new Error(msg || 'Authentication failed')
+      const rawText = await res.text()
+      let errorText = rawText
+      try {
+        const parsed = JSON.parse(rawText)
+        errorText = parsed.error || parsed.message || rawText
+      } catch {}
+      throw new Error(errorText || 'Authentication failed')
     }
     
     const data = await res.json()

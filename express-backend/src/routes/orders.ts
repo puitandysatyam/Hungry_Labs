@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { getConfig, placeOrder, applyCoupon, getUserOrders } from '../controllers/orderController';
-import { requireAuth } from '../middlewares/auth';
+import { requireAuth, optionalAuth } from '../middlewares/auth';
 
 const router = Router();
 router.get('/config', getConfig);
-router.post('/', placeOrder);
+router.post('/', optionalAuth, placeOrder);
 
 // Protected routes
 router.use(requireAuth);

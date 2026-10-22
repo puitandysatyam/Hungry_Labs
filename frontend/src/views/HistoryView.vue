@@ -66,6 +66,12 @@ const isLoading = ref(true)
 const error = ref(null)
 
 const fetchOrders = async () => {
+  if (!authStore.user?.id) {
+    isLoading.value = false
+    error.value = "Please sign in to view your orders."
+    return
+  }
+
   isLoading.value = true
   error.value = null
   
@@ -74,10 +80,15 @@ const fetchOrders = async () => {
       headers: authStore.getAuthHeaders()
     })
     
+    if (res.status === 401) {
+      authStore.logout()
+      throw new Error("Your session has expired. Please log in again.")
+    }
+
     if (!res.ok) throw new Error("Failed to load orders. Please try again.")
     
     orders.value = await res.json()
-    // Optional: Sort so newest orders show up first
+    // Sort so newest orders show up first
     orders.value.sort((a, b) => b.id - a.id) 
     
   } catch (err) {

@@ -21,12 +21,10 @@ router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // If not logged in, boot them to home (they can open auth modal from there)
     return next({ name: 'home', query: { login: 'true' } }) 
   }
   
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    alert("You do not have administrative privileges.")
     return next({ name: 'home' })
   }
   

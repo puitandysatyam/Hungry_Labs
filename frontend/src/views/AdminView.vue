@@ -368,6 +368,7 @@ const allAddons = ref([])
 
 // Fetch Logic
 const fetchActiveOrders = async () => {
+  if (activeTab.value !== 'orders') return
   try {
     const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders/active`, { headers: authStore.getAuthHeaders() })
     if (res.ok) activeOrders.value = await res.json()

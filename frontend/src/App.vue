@@ -40,9 +40,6 @@
       <div class="container text-center">
         <p>&copy; 2026 The Hungry Lab. Fresh. Filling. Full of flavor.</p>
         <div class="footer-links">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Contact Us</a>
           <router-link to="/privacy">Privacy Policy</router-link>
           <router-link to="/terms">Terms of Service</router-link>
           <router-link to="/contact">Contact Us</router-link>

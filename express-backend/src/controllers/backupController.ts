@@ -1,31 +1,31 @@
 import { Request, Response } from 'express';
 import prisma from '../config/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import crypto from 'crypto';
 
 const s3Client = new S3Client({
     endpoint: process.env.B2_ENDPOINT,
     region: "us-east-005",
     credentials: {
-        accessKeyId: process.env.B2_KEY_ID || '',
-        secretAccessKey: process.env.B2_APP_KEY || ''
+        accessKeyId: process.env.B2_APPLICATION_KEY_ID || process.env.B2_KEY_ID || '',
+        secretAccessKey: process.env.B2_APPLICATION_KEY || process.env.B2_APP_KEY || ''
     }
 });
 
 export const createBackup = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Authorize request via Vercel CRON_SECRET or Admin token (if called manually)
         const authHeader = req.headers.authorization;
         const cronSecret = process.env.CRON_SECRET;
-        
-        // Skip auth check only if CRON_SECRET is missing locally, but enforce it in prod
-        if (process.env.NODE_ENV === 'production' && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-            res.status(401).json({ error: 'Unauthorized CRON request' });
+
+        // Security: Always require CRON_SECRET for database backups
+        if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+            res.status(401).json({ error: 'Unauthorized request: Valid CRON_SECRET required.' });
             return;
         }
 
         console.log("Starting DB Backup...");
 
-        // Fetch all tables
+        // Fetch all tables (explicitly omit password hashes from user export for safety)
         const [
             users,
             menuItems,
@@ -36,7 +36,9 @@ export const createBackup = async (req: Request, res: Response): Promise<void> =
             coupons,
             carouselImages
         ] = await Promise.all([
-            prisma.user.findMany(),
+            prisma.user.findMany({
+                select: { id: true, name: true, email: true, phone: true, role: true }
+            }),
             prisma.menuItem.findMany(),
             prisma.addon.findMany(),
             prisma.order.findMany(),
@@ -67,7 +69,7 @@ export const createBackup = async (req: Request, res: Response): Promise<void> =
         const filename = `backups/db-backup-${dateStr}-${crypto.randomUUID().slice(0, 8)}.json`;
 
         const command = new PutObjectCommand({
-            Bucket: process.env.BUCKET_NAME || 'HungryLab-WebsiteFiles',
+            Bucket: process.env.B2_BUCKET_NAME || process.env.BUCKET_NAME || 'HungryLab-WebsiteFiles',
             Key: filename,
             Body: jsonString,
             ContentType: 'application/json'
@@ -82,4 +84,3 @@ export const createBackup = async (req: Request, res: Response): Promise<void> =
         res.status(500).json({ error: error.message });
     }
 };
-

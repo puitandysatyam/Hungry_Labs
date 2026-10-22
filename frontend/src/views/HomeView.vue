@@ -46,6 +46,17 @@
             ></span>
           </div>
         </div>
+        <!-- Fallback when no carousel slides are uploaded yet -->
+        <div class="carousel-container" v-else>
+          <div class="carousel-wrapper" style="display: flex; align-items: center; justify-content: center; min-height: 380px;">
+            <img 
+              src="/assets/Logo.png" 
+              class="hero-img-element" 
+              alt="The Hungry Lab"
+              style="max-height: 360px; object-fit: contain; filter: drop-shadow(0 20px 30px rgba(255, 90, 48, 0.2));"
+            />
+          </div>
+        </div>
       </div>
     </section>
 

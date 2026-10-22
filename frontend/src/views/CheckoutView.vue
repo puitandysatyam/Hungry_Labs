@@ -17,7 +17,7 @@
           <!-- Item Details -->
           <div class="item-details">
             <div class="item-header">
-              <div class="veg-indicator" :class="item.menuItem.isVeg ? 'veg' : 'non-veg'">
+              <div class="veg-indicator" :class="item.menuItem.veg ? 'veg' : 'non-veg'">
                 <span class="dot"></span>
               </div>
               <h3>{{ item.menuItem.name }}</h3>
@@ -303,12 +303,50 @@ const placeOrder = async () => {
       image: "/assets/Logo.png",
       order_id: orderData.razorpayOrderId, 
       
-      handler: function (response) {
-        orderStatus.value = {
-          type: 'success',
-          text: `Payment Successful! Your Order #${orderData.orderId} is being prepared.`
+      handler: async function (response) {
+        try {
+          isSubmitting.value = true
+          orderStatus.value = {
+            type: 'info',
+            text: 'Verifying payment with kitchen...'
+          }
+
+          const verifyResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/payment/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: orderData.orderId,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            })
+          })
+
+          if (!verifyResp.ok) {
+            const errJson = await verifyResp.json().catch(() => ({}))
+            throw new Error(errJson.error || 'Payment signature verification failed.')
+          }
+
+          cartStore.clearCart()
+          orderStatus.value = {
+            type: 'success',
+            text: `Payment Successful! Your Order #${orderData.orderId} is confirmed and being prepared.`
+          }
+
+          setTimeout(() => {
+            if (authStore.isAuthenticated) {
+              router.push('/history')
+            }
+          }, 2000)
+        } catch (vErr) {
+          console.error("Verification error:", vErr)
+          orderStatus.value = {
+            type: 'error',
+            text: `Verification warning: ${vErr.message}. If payment was deducted, our webhook will confirm your order shortly.`
+          }
+        } finally {
+          isSubmitting.value = false
         }
-        cartStore.clearCart()
       },
       prefill: {
         name: formData.value.customerName,

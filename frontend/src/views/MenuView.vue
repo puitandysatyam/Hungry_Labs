@@ -132,11 +132,16 @@ const fetchMenu = async () => {
 }
 
 const addToCart = (item) => {
-  // Pass the item to the cart store
-  cartStore.addToCart(item, [], 1)
+  // Pass the item to the cart store with selected addons
+  const addons = item.selectedAddOnsLocal ? [...item.selectedAddOnsLocal] : []
+  cartStore.addToCart(item, addons, 1)
+  
+  // Reset selected addons checkboxes for this item
+  item.selectedAddOnsLocal = []
   
   // Show a beautiful custom toast instead of system alert
-  toastMessage.value = `${item.name}`
+  const addonsDesc = addons.length > 0 ? ` (+${addons.map(a => a.name).join(', ')})` : ''
+  toastMessage.value = `${item.name}${addonsDesc}`
   showToast.value = true
   
   if (toastTimeout) clearTimeout(toastTimeout)

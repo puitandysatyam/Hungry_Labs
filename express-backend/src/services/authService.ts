@@ -17,7 +17,15 @@ export const register = async (data: any) => {
         }
     });
 
-    return { message: "User registered successfully", userId: user.id };
+    const token = generateToken({ id: user.id, email: user.email, role: user.role });
+
+    return {
+        message: "User registered successfully",
+        token,
+        userId: user.id,
+        name: user.name,
+        role: user.role
+    };
 };
 
 export const authenticate = async (data: any) => {
@@ -27,7 +35,7 @@ export const authenticate = async (data: any) => {
     const isValid = await bcrypt.compare(data.password, user.password);
     if (!isValid) throw new Error("Invalid credentials");
 
-    const token = generateToken({ email: user.email, role: user.role });
+    const token = generateToken({ id: user.id, email: user.email, role: user.role });
 
     return {
         token,
@@ -35,12 +43,4 @@ export const authenticate = async (data: any) => {
         name: user.name,
         role: user.role
     }; // Maps exact Java AuthResponseDto
-};
-
-export const upgradeToAdmin = async (email: string) => {
-    const user = await prisma.user.update({
-        where: { email },
-        data: { role: "ADMIN" }
-    });
-    return `User ${email} upgraded to ADMIN`;
 };
