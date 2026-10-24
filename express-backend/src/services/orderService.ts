@@ -7,9 +7,22 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET || ''
 });
 
-export const applyCoupon = async (code: string) => {
+// Helper to resolve coupon from DB or standard promo offers
+const resolveCoupon = async (code: string) => {
     const cleanCode = code.trim().toUpperCase();
-    const coupon = await prisma.coupon.findUnique({ where: { code: cleanCode } });
+    let coupon = await prisma.coupon.findUnique({ where: { code: cleanCode } });
+    if (!coupon) {
+        if (cleanCode === 'HUNGRY10') {
+            coupon = { id: 0, code: 'HUNGRY10', discountType: 'PERCENTAGE', discountValue: 10, minOrderValue: 100, active: true };
+        } else if (cleanCode === 'WELCOME50') {
+            coupon = { id: 0, code: 'WELCOME50', discountType: 'FLAT', discountValue: 50, minOrderValue: 200, active: true };
+        }
+    }
+    return coupon;
+};
+
+export const applyCoupon = async (code: string) => {
+    const coupon = await resolveCoupon(code);
     if (!coupon) {
         return { valid: false, message: "Invalid coupon", discountType: null, discountValue: null, minOrderValue: null };
     }
@@ -109,8 +122,7 @@ export const placeOrder = async (data: any, authenticatedUserId?: number) => {
 
     // 3. Apply coupon logic (if passed)
     if (data.couponCode) {
-        const cleanCode = String(data.couponCode).trim().toUpperCase();
-        const coupon = await prisma.coupon.findUnique({ where: { code: cleanCode } });
+        const coupon = await resolveCoupon(String(data.couponCode));
         if (coupon && calculatedTotal >= coupon.minOrderValue && coupon.active) {
             if (coupon.discountType === 'FLAT') {
                 calculatedTotal -= coupon.discountValue;

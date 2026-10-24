@@ -2,7 +2,7 @@
   <div class="container animate-fade-in admin-container">
     <div class="header-section text-center">
       <h1 class="page-title">Lab <span class="text-brand">Command Center</span></h1>
-      <p class="text-muted">Real-time Operations & Menu Management</p>
+      <p class="text-muted">Real-time Operations, Nutrition & Menu Management</p>
     </div>
 
     <div class="admin-tabs">
@@ -11,7 +11,7 @@
       <button :class="['tab-btn', { active: activeTab === 'menu' }]" @click="activeTab = 'menu'">Menu Items</button>
       <button :class="['tab-btn', { active: activeTab === 'addons' }]" @click="activeTab = 'addons'">Addons</button>
       <button :class="['tab-btn', { active: activeTab === 'coupons' }]" @click="activeTab = 'coupons'">Coupons</button>
-        <button :class="['tab-btn', { active: activeTab === 'carousel' }]" @click="activeTab = 'carousel'">Carousel/Offers</button>
+      <button :class="['tab-btn', { active: activeTab === 'carousel' }]" @click="activeTab = 'carousel'">Carousel/Offers</button>
     </div>
 
     <!-- ================= LIVE QUEUE TAB ================= -->
@@ -85,10 +85,13 @@
     <!-- ================= MENU ITEMS TAB ================= -->
     <div v-if="activeTab === 'menu'" class="tab-content card">
       <div class="section-header">
-        <h3>Menu Management</h3>
+        <div>
+          <h3 class="mb-0">Menu Management</h3>
+          <small class="text-muted">Set pricing, veg/non-veg status, calories, and protein values</small>
+        </div>
         <div class="actions-row">
           <input type="text" v-model="menuSearch" placeholder="Search menu..." class="form-input search-input" />
-          <button @click="openMenuModal()" class="btn btn-primary">Add New Item</button>
+          <button @click="openMenuModal()" class="btn btn-primary">+ Add New Item</button>
         </div>
       </div>
 
@@ -100,21 +103,37 @@
               <th>Name</th>
               <th>Category</th>
               <th>Price</th>
-              <th>Type</th>
+              <th>Nutrition</th>
+              <th>Diet</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in filteredMenu" :key="item.id">
               <td><img :src="item.imageUrl" alt="img" class="table-img" v-if="item.imageUrl" /></td>
-              <td>{{ item.name }}</td>
-              <td>{{ item.category }}</td>
-              <td>₹{{ item.price }}</td>
-              <td>{{ item.veg ? 'Veg' : 'Non-Veg' }}</td>
               <td>
-                  <button @click="openMenuModal(item)" class="btn btn-secondary btn-sm" style="margin-right:8px;">Edit</button>
-                  <button @click="deleteMenu(item.id)" class="btn btn-primary btn-sm" style="background:#d13d18;">Delete</button>
-                </td>
+                <strong>{{ item.name }}</strong>
+                <div v-if="item.desc" class="text-muted text-xs truncate-desc">{{ item.desc }}</div>
+              </td>
+              <td><span class="cat-pill">{{ item.category }}</span></td>
+              <td><strong>₹{{ item.price }}</strong></td>
+              <td>
+                <div class="nutri-pills">
+                  <span class="badge-nutri cal-badge">🔥 {{ item.calories || 0 }} kcal</span>
+                  <span class="badge-nutri pro-badge">💪 {{ item.protein || 0 }}g</span>
+                </div>
+              </td>
+              <td>
+                <span :class="['diet-tag', item.veg ? 'diet-veg' : 'diet-nonveg']">
+                  {{ item.veg ? '🌱 Veg' : '🍗 Non-Veg' }}
+                </span>
+              </td>
+              <td>
+                <div class="table-btn-group">
+                  <button @click="openMenuModal(item)" class="btn btn-secondary btn-sm">Edit</button>
+                  <button @click="deleteMenu(item.id)" class="btn btn-danger btn-sm">Delete</button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -124,8 +143,11 @@
     <!-- ================= ADDONS TAB ================= -->
     <div v-if="activeTab === 'addons'" class="tab-content card">
       <div class="section-header">
-        <h3>Addons Management</h3>
-        <button @click="openAddonModal()" class="btn btn-primary">Add New Addon</button>
+        <div>
+          <h3 class="mb-0">Addons Management</h3>
+          <small class="text-muted">Manage extra toppings, sauces, and their nutritional breakdown</small>
+        </div>
+        <button @click="openAddonModal()" class="btn btn-primary">+ Add New Addon</button>
       </div>
 
       <div class="table-responsive mt-3">
@@ -134,97 +156,104 @@
             <tr>
               <th>ID</th>
               <th>Name</th>
-              <th>Price</th>
+              <th>Extra Price</th>
+              <th>Nutrition Breakdown</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="addon in allAddons" :key="addon.id">
-              <td>{{ addon.id }}</td>
-              <td>{{ addon.name }}</td>
-              <td>₹{{ addon.price }}</td>
+              <td>#{{ addon.id }}</td>
+              <td><strong>{{ addon.name }}</strong></td>
+              <td><strong>₹{{ addon.price }}</strong></td>
               <td>
-                  <button @click="openAddonModal(addon)" class="btn btn-secondary btn-sm" style="margin-right:8px;">Edit</button>
-                  <button @click="deleteAddon(addon.id)" class="btn btn-primary btn-sm" style="background:#d13d18;">Delete</button>
-                </td>
+                <div class="nutri-pills">
+                  <span class="badge-nutri cal-badge">🔥 {{ addon.calories || 0 }} kcal</span>
+                  <span class="badge-nutri pro-badge">💪 {{ addon.protein || 0 }}g</span>
+                </div>
+              </td>
+              <td>
+                <div class="table-btn-group">
+                  <button @click="openAddonModal(addon)" class="btn btn-secondary btn-sm">Edit</button>
+                  <button @click="deleteAddon(addon.id)" class="btn btn-danger btn-sm">Delete</button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
+    <!-- ================= CAROUSEL TAB ================= -->
+    <div v-if="activeTab === 'carousel'" class="tab-content card">
+      <div class="section-header">
+        <h3>Home Page Carousel Management</h3>
+        <button @click="openCarouselModal()" class="btn btn-primary">Add New Slide</button>
+      </div>
+      <div class="table-responsive mt-3">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Status</th>
+              <th>Order</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="slide in carouselImages" :key="slide.id">
+              <td><img :src="slide.imageUrl" class="table-img" style="width: 80px; height: auto;" /></td>
+              <td>{{ slide.active ? 'Active' : 'Hidden' }}</td>
+              <td>{{ slide.order }}</td>
+              <td>
+                <button @click="openCarouselModal(slide)" class="btn btn-secondary btn-sm" style="margin-right:8px;">Edit</button>
+                <button v-if="slide.id > 0" @click="deleteCarousel(slide.id)" class="btn btn-primary btn-sm" style="background:#d13d18;">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     
-      <!-- ================= CAROUSEL TAB ================= -->
-      <div v-if="activeTab === 'carousel'" class="tab-content card">
-        <div class="section-header">
-          <h3>Home Page Carousel Management</h3>
-          <button @click="openCarouselModal()" class="btn btn-primary">Add New Slide</button>
-        </div>
-        <div class="table-responsive mt-3">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Image</th>
-                <th>Status</th>
-                <th>Order</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="slide in carouselImages" :key="slide.id">
-                <td><img :src="slide.imageUrl" class="table-img" style="width: 80px; height: auto;" /></td>
-                <td>{{ slide.active ? 'Active' : 'Hidden' }}</td>
-                <td>{{ slide.order }}</td>
-                <td>
-                  <button @click="openCarouselModal(slide)" class="btn btn-secondary btn-sm" style="margin-right:8px;">Edit</button>
-                  <button v-if="slide.id > 0" @click="deleteCarousel(slide.id)" class="btn btn-primary btn-sm" style="background:#d13d18;">Delete</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <!-- Carousel Modal -->
+    <div v-if="showCarouselModal" class="modal-overlay" @click.self="showCarouselModal = false">
+      <div class="modal-content card" style="max-width: 500px;">
+        <h3 class="mb-3">{{ carouselForm.id ? 'Edit Slide' : 'Add Slide' }}</h3>
+        <form @submit.prevent="handleCarouselSubmit" class="admin-form">
+          <div class="form-group image-upload-group">
+            <label>Banner Image</label>
+            <div class="upload-area" :class="{ 'has-file': selectedFile }">
+              <input type="file" @change="handleFileChange" accept="image/*" class="file-input" />
+              <span v-if="!selectedFile">Click to select new image...</span>
+              <span v-else class="text-brand font-weight-bold">{{ selectedFile.name }} (Ready to upload)</span>
+            </div>
+            <small v-if="carouselForm.imageUrl && !selectedFile" class="text-muted mt-1 d-block">Current image exists. Uploading a new one will replace it.</small>
+            <small class="text-muted mt-1 d-block">Or use local asset path like '/assets/Menu 1.png' (Leave file blank)</small>
+            <input type="text" v-model="carouselForm.imageUrl" placeholder="/assets/hero.png" class="form-input mt-2" v-if="!selectedFile" />
+          </div>
+          
+          <div class="form-row mt-2">
+            <div class="form-group flex-1">
+              <label>Order (Sequence)</label>
+              <input type="number" v-model="carouselForm.order" required class="form-input" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Status</label>
+              <div class="checkbox-group" style="margin-top: 10px;">
+                <input type="checkbox" v-model="carouselForm.active" />
+                <span>Is Active</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-actions mt-4">
+            <button type="button" class="btn btn-secondary" @click="showCarouselModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="isUploading">{{ isUploading ? 'Saving...' : 'Save Slide' }}</button>
+          </div>
+        </form>
       </div>
-      
-      <!-- Carousel Modal -->
-      <div v-if="showCarouselModal" class="modal-overlay" @click.self="showCarouselModal = false">
-        <div class="modal-content card" style="max-width: 500px;">
-          <h3 class="mb-3">{{ carouselForm.id ? 'Edit Slide' : 'Add Slide' }}</h3>
-          <form @submit.prevent="handleCarouselSubmit" class="admin-form">
-            <div class="form-group image-upload-group">
-              <label>Banner Image</label>
-              <div class="upload-area" :class="{ 'has-file': selectedFile }">
-                <input type="file" @change="handleFileChange" accept="image/*" class="file-input" />
-                <span v-if="!selectedFile">Click to select new image...</span>
-                <span v-else class="text-brand font-weight-bold">{{ selectedFile.name }} (Ready to upload)</span>
-              </div>
-              <small v-if="carouselForm.imageUrl && !selectedFile" class="text-muted mt-1 d-block">Current image exists. Uploading a new one will replace it.</small>
-              <small class="text-muted mt-1 d-block">Or use local asset path like '/assets/Menu 1.png' (Leave file blank)</small>
-              <input type="text" v-model="carouselForm.imageUrl" placeholder="/assets/hero.png" class="form-input mt-2" v-if="!selectedFile" />
-            </div>
-            
-            <div class="form-row mt-2">
-              <div class="form-group flex-1">
-                <label>Order (Sequence)</label>
-                <input type="number" v-model="carouselForm.order" required class="form-input" />
-              </div>
-              <div class="form-group flex-1">
-                <label>Status</label>
-                <div class="checkbox-group" style="margin-top: 10px;">
-                  <input type="checkbox" v-model="carouselForm.active" />
-                  <span>Is Active</span>
-                </div>
-              </div>
-            </div>
-            <div class="modal-actions mt-4">
-              <button type="button" class="btn btn-secondary" @click="showCarouselModal = false">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="isUploading">{{ isUploading ? 'Saving...' : 'Save Slide' }}</button>
-            </div>
-          </form>
-        </div>
-      </div>
+    </div>
 
-
-      <!-- ================= COUPONS TAB ================= -->
+    <!-- ================= COUPONS TAB ================= -->
     <div v-if="activeTab === 'coupons'" class="tab-content card">
       <h3>Create Coupon Campaign</h3>
       <form @submit.prevent="handleCouponSubmit" class="admin-form mt-3">
@@ -279,25 +308,43 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label>Name</label>
-              <input type="text" v-model="menuForm.name" required class="form-input" />
+              <input type="text" v-model="menuForm.name" required placeholder="e.g. Smash Double Burger" class="form-input" />
             </div>
             <div class="form-group flex-1">
               <label>Category</label>
-              <input type="text" v-model="menuForm.category" required class="form-input" />
+              <input type="text" v-model="menuForm.category" required placeholder="e.g. Burgers, Wraps, Drinks" class="form-input" />
             </div>
           </div>
           <div class="form-group">
             <label>Description</label>
-            <textarea v-model="menuForm.desc" rows="2" class="form-input"></textarea>
+            <textarea v-model="menuForm.desc" rows="2" placeholder="Ingredients, savory sauce notes, etc." class="form-input"></textarea>
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
               <label>Price (₹)</label>
-              <input type="number" v-model="menuForm.price" required class="form-input" />
+              <input type="number" v-model.number="menuForm.price" required min="0" class="form-input" />
             </div>
-            <div class="form-group checkbox-group flex-1">
+            <div class="form-group checkbox-group flex-1" style="margin-top: 28px;">
               <input type="checkbox" id="isVeg" v-model="menuForm.isVeg" />
-              <label for="isVeg">Is Vegetarian?</label>
+              <label for="isVeg" style="cursor: pointer;">Is Pure Vegetarian?</label>
+            </div>
+          </div>
+
+          <!-- Nutritional Data (Calories & Protein) -->
+          <div class="nutri-form-box">
+            <div class="nutri-box-title">
+              <span>Nutritional Facts</span>
+              <small class="text-muted">(Displayed prominently on food cards)</small>
+            </div>
+            <div class="form-row mt-2">
+              <div class="form-group flex-1">
+                <label>🔥 Calories (kcal)</label>
+                <input type="number" v-model.number="menuForm.calories" min="0" placeholder="e.g. 520" class="form-input" />
+              </div>
+              <div class="form-group flex-1">
+                <label>💪 Protein (grams)</label>
+                <input type="number" step="0.1" v-model.number="menuForm.protein" min="0" placeholder="e.g. 24.5" class="form-input" />
+              </div>
             </div>
           </div>
           
@@ -306,7 +353,12 @@
             <div class="addon-selection-box border rounded p-3" style="max-height: 150px; overflow-y: auto;">
               <div v-for="addon in allAddons" :key="addon.id" class="checkbox-group mb-1">
                 <input type="checkbox" :id="'addon_'+addon.id" :value="addon" v-model="menuForm.addonList" />
-                <label :for="'addon_'+addon.id">{{ addon.name }} (+₹{{ addon.price }})</label>
+                <label :for="'addon_'+addon.id">
+                  {{ addon.name }} (+₹{{ addon.price }})
+                  <span v-if="addon.calories || addon.protein" class="text-muted text-xs">
+                    • {{ addon.calories || 0 }} cal, {{ addon.protein || 0 }}g pro
+                  </span>
+                </label>
               </div>
               <p v-if="!allAddons.length" class="text-muted text-sm">No addons available. Create them in the Addons tab.</p>
             </div>
@@ -325,17 +377,36 @@
 
     <!-- Addon Modal -->
     <div v-if="showAddonModal" class="modal-overlay" @click.self="showAddonModal = false">
-      <div class="modal-content card" style="max-width: 400px;">
+      <div class="modal-content card" style="max-width: 480px;">
         <h3 class="mb-3">{{ addonForm.id ? 'Edit Addon' : 'Add Addon' }}</h3>
         <form @submit.prevent="handleAddonSubmit" class="admin-form">
           <div class="form-group">
-            <label>Name</label>
-            <input type="text" v-model="addonForm.name" required class="form-input" />
+            <label>Addon Name</label>
+            <input type="text" v-model="addonForm.name" required placeholder="e.g. Extra Cheese Slice, Chipotle Dip" class="form-input" />
           </div>
-          <div class="form-group mt-3">
-            <label>Price (₹)</label>
-            <input type="number" v-model="addonForm.price" required class="form-input" />
+          <div class="form-group mt-2">
+            <label>Extra Price (₹)</label>
+            <input type="number" v-model.number="addonForm.price" required min="0" placeholder="e.g. 30" class="form-input" />
           </div>
+
+          <!-- Addon Nutritional Data (Calories & Protein) -->
+          <div class="nutri-form-box mt-3">
+            <div class="nutri-box-title">
+              <span>Nutritional Facts</span>
+              <small class="text-muted">(Contribution per addon)</small>
+            </div>
+            <div class="form-row mt-2">
+              <div class="form-group flex-1">
+                <label>🔥 Calories (kcal)</label>
+                <input type="number" v-model.number="addonForm.calories" min="0" placeholder="e.g. 80" class="form-input" />
+              </div>
+              <div class="form-group flex-1">
+                <label>💪 Protein (grams)</label>
+                <input type="number" step="0.1" v-model.number="addonForm.protein" min="0" placeholder="e.g. 4.0" class="form-input" />
+              </div>
+            </div>
+          </div>
+
           <div class="modal-actions mt-4">
             <button type="button" class="btn btn-secondary" @click="showAddonModal = false">Cancel</button>
             <button type="submit" class="btn btn-primary">Save Addon</button>
@@ -443,16 +514,43 @@ const showMenuModal = ref(false)
 const isUploading = ref(false)
 const menuStatus = ref('')
 const selectedFile = ref(null)
-const menuForm = ref({ id: null, name: '', category: '', desc: '', price: 0, isVeg: true, imageUrl: '', addonList: [] })
+const menuForm = ref({
+  id: null,
+  name: '',
+  category: '',
+  desc: '',
+  price: 0,
+  calories: 0,
+  protein: 0,
+  isVeg: true,
+  imageUrl: '',
+  addonList: []
+})
 
 const openMenuModal = (item = null) => {
   menuStatus.value = ''
   selectedFile.value = null
   if (item) {
-    // Clone correctly based on DTO schema vs Backend Entity
-    menuForm.value = { ...item, isVeg: item.veg, addonList: item.addons || item.addonList || [] }
+    menuForm.value = {
+      ...item,
+      calories: item.calories !== undefined && item.calories !== null ? item.calories : 0,
+      protein: item.protein !== undefined && item.protein !== null ? item.protein : 0,
+      isVeg: item.veg !== undefined ? Boolean(item.veg) : true,
+      addonList: item.addons || item.addonList || []
+    }
   } else {
-    menuForm.value = { id: null, name: '', category: '', desc: '', price: 0, isVeg: true, imageUrl: '', addonList: [] }
+    menuForm.value = {
+      id: null,
+      name: '',
+      category: '',
+      desc: '',
+      price: 0,
+      calories: 0,
+      protein: 0,
+      isVeg: true,
+      imageUrl: '',
+      addonList: []
+    }
   }
   showMenuModal.value = true
 }
@@ -513,14 +611,20 @@ const uploadSelectedFile = async (file, folder = 'hungry-lab/menu') => {
 };
 
 const handleMenuSubmit = async () => {
-  isUploading.value = true; menuStatus.value = ''
+  isUploading.value = true
+  menuStatus.value = ''
   try {
     let finalImageUrl = menuForm.value.imageUrl;
     if (selectedFile.value) {
       finalImageUrl = await uploadSelectedFile(selectedFile.value, 'hungry-lab/menu');
     }
     
-    const payload = { ...menuForm.value, imageUrl: finalImageUrl }
+    const payload = {
+      ...menuForm.value,
+      calories: Number(menuForm.value.calories || 0),
+      protein: Number(menuForm.value.protein || 0),
+      imageUrl: finalImageUrl
+    }
     const url = payload.id ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/menu/${payload.id}` : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/menu`
     const method = payload.id ? 'PUT' : 'POST'
     
@@ -538,21 +642,36 @@ const handleMenuSubmit = async () => {
 
 // Addon Modal & Form
 const showAddonModal = ref(false)
-const addonForm = ref({ id: null, name: '', price: 0 })
+const addonForm = ref({ id: null, name: '', price: 0, calories: 0, protein: 0 })
 
 const openAddonModal = (item = null) => {
-  addonForm.value = item ? { ...item } : { id: null, name: '', price: 0 }
+  addonForm.value = item
+    ? {
+        ...item,
+        calories: item.calories !== undefined && item.calories !== null ? item.calories : 0,
+        protein: item.protein !== undefined && item.protein !== null ? item.protein : 0
+      }
+    : { id: null, name: '', price: 0, calories: 0, protein: 0 }
   showAddonModal.value = true
 }
 
 const handleAddonSubmit = async () => {
   try {
-    const url = addonForm.value.id ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons/${addonForm.value.id}` : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons`
-    const method = addonForm.value.id ? 'PUT' : 'POST'
-    await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(addonForm.value) })
+    const payload = {
+      ...addonForm.value,
+      calories: Number(addonForm.value.calories || 0),
+      protein: Number(addonForm.value.protein || 0)
+    }
+    const url = payload.id ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons/${payload.id}` : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons`
+    const method = payload.id ? 'PUT' : 'POST'
+    const res = await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    if (!res.ok) throw new Error("Failed to save addon.")
     showAddonModal.value = false
     fetchAddons()
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+    alert("Error saving addon: " + e.message)
+  }
 }
 
 // Coupons Form
@@ -652,33 +771,132 @@ fetchCarouselImages()
 
 
 <style scoped>
-.admin-container { padding-bottom: 60px; max-width: 1000px;}
-.header-section { margin-bottom: 30px; }
-.admin-tabs { display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;}
-.tab-btn { background: none; border: 2px solid transparent; padding: 8px 16px; font-size: 1rem; font-weight: 600; cursor: pointer; color: var(--text-muted); border-radius: 20px; position: relative;}
-.tab-btn.active { color: var(--brand-primary); background: rgba(232, 74, 32, 0.1); }
-.badge { background: #d13d18; color: white; border-radius: 50%; padding: 2px 6px; font-size: 0.75rem; position: absolute; top: -5px; right: -5px; }
+.admin-container { padding-bottom: 60px; max-width: 1100px; margin: 0 auto; }
+.header-section { margin-bottom: 28px; }
+.admin-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+.tab-btn {
+  background: white;
+  border: 1.5px solid rgba(0,0,0,0.08);
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 999px;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.tab-btn:hover {
+  border-color: rgba(232, 74, 32, 0.3);
+  color: var(--brand-primary);
+  transform: translateY(-1px);
+}
+.tab-btn.active {
+  color: white;
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  box-shadow: 0 4px 12px rgba(232, 74, 32, 0.25);
+}
+.badge {
+  background: #fff;
+  color: var(--brand-primary);
+  font-weight: 800;
+  border-radius: 50%;
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
 
-.section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 12px; margin-bottom: 16px; }
-.actions-row { display: flex; gap: 12px; }
-.search-input { min-width: 250px; }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1.5px solid rgba(0,0,0,0.06);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.actions-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.search-input { min-width: 240px; }
 
 /* Orders Grid */
 .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-.order-card { padding: 16px; display: flex; flex-direction: column; }
-.order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 12px;}
-.order-header h4 { margin: 0; }
+.order-card { padding: 18px; display: flex; flex-direction: column; border-radius: 14px; }
+.order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 12px;}
+.order-header h4 { margin: 0; font-size: 1.1rem; }
 .item-list { list-style: none; padding: 0; margin: 0; }
 .item-list li { margin-bottom: 6px; }
 .qty { font-weight: bold; color: var(--brand-primary); }
 .order-actions { margin-top: auto; }
 
 /* Tables */
-.table-responsive { overflow-x: auto; }
-.admin-table { width: 100%; border-collapse: collapse; }
-.admin-table th, .admin-table td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.05); }
-.admin-table th { font-weight: bold; color: var(--text-muted); background: rgba(0,0,0,0.02); }
-.table-img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.admin-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.admin-table th, .admin-table td { padding: 14px 12px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: middle; }
+.admin-table th { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); background: rgba(0,0,0,0.02); }
+.table-img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; border: 1.5px solid rgba(0,0,0,0.06); }
+.table-btn-group { display: flex; gap: 8px; }
+
+/* Nutritional Badges */
+.nutri-pills { display: flex; flex-direction: column; gap: 4px; }
+.badge-nutri {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.cal-badge {
+  background: rgba(232, 74, 32, 0.1);
+  color: #c93b12;
+  border: 1px solid rgba(232, 74, 32, 0.2);
+}
+.pro-badge {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Category & Diet Tags */
+.cat-pill {
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #f1f3f5;
+  color: #495057;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.diet-tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.diet-veg { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.diet-nonveg { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+.truncate-desc {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-danger {
+  background: #dc2626;
+  color: white;
+  border: none;
+}
+.btn-danger:hover {
+  background: #b91c1c;
+}
 
 /* Status Badges */
 .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
@@ -688,26 +906,45 @@ fetchCarouselImages()
 .status-gray { background: #e2e3e5; color: #383d41; }
 
 /* Modals */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-content { width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 24px; }
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.modal-content { width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; padding: 26px; border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.2); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+
+/* Nutritional Form Box inside Modals */
+.nutri-form-box {
+  background: #fafafa;
+  border: 1.5px dashed #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 8px;
+}
+.nutri-box-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #334155;
+  margin-bottom: 4px;
+}
 
 /* Forms */
 .admin-form { display: flex; flex-direction: column; gap: 16px; }
-.form-row { display: flex; gap: 16px; }
-.flex-1 { flex: 1; }
+.form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.flex-1 { flex: 1; min-width: 140px; }
 .form-group { display: flex; flex-direction: column; }
-.form-group label { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
-.form-input { padding: 10px; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px; font-family: inherit; }
-.form-input:focus { outline: none; border-color: var(--brand-primary); }
+.form-group label { font-size: 0.88rem; font-weight: 700; margin-bottom: 6px; color: #2d3748; }
+.form-input { padding: 10px 14px; border: 1.5px solid rgba(0,0,0,0.12); border-radius: 10px; font-family: inherit; font-size: 0.92rem; transition: border-color 0.2s; }
+.form-input:focus { outline: none; border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(232, 74, 32, 0.1); }
 .checkbox-group { display: flex; align-items: center; gap: 8px; }
 .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--brand-primary); cursor: pointer; }
-.upload-area { border: 2px dashed rgba(0,0,0,0.2); padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; position: relative; background: rgba(0,0,0,0.02);}
+.upload-area { border: 2px dashed rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; text-align: center; cursor: pointer; position: relative; background: rgba(0,0,0,0.02);}
 .upload-area:hover, .upload-area.has-file { border-color: var(--brand-primary); }
 .file-input { position: absolute; top:0; left:0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
 .d-block { display: block; }
 .w-100 { width: 100%; }
+.mb-0 { margin-bottom: 0; }
 .mb-1 { margin-bottom: 4px; }
 .mb-2 { margin-bottom: 8px; }
 .mb-3 { margin-bottom: 16px; }
@@ -718,8 +955,17 @@ fetchCarouselImages()
 .p-3 { padding: 12px; }
 .pl-4 { padding-left: 16px; }
 .text-sm { font-size: 0.85rem; }
-.border { border: 1px solid rgba(0,0,0,0.15); }
-.rounded { border-radius: 8px; }
-.animate-fade-in { animation: fadeIn 0.4s ease-out; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.text-xs { font-size: 0.75rem; }
+.border { border: 1px solid rgba(0,0,0,0.12); }
+.rounded { border-radius: 10px; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 640px) {
+  .section-header { flex-direction: column; align-items: flex-start; }
+  .actions-row { width: 100%; }
+  .search-input { width: 100%; }
+  .form-row { flex-direction: column; }
+  .tab-btn { padding: 8px 14px; font-size: 0.85rem; }
+}
 </style>

@@ -70,8 +70,15 @@ export const getAddons = async (req: Request, res: Response) => {
 
 export const createAddon = async (req: Request, res: Response) => {
     try {
-        const { name, price } = req.body;
-        const addon = await prisma.addon.create({ data: { name, price: Number(price) } });
+        const { name, price, calories, protein } = req.body;
+        const addon = await prisma.addon.create({
+            data: {
+                name,
+                price: Number(price),
+                calories: calories !== undefined && calories !== null && calories !== '' ? Number(calories) : 0,
+                protein: protein !== undefined && protein !== null && protein !== '' ? Number(protein) : 0
+            }
+        });
         await invalidateMenuCache();
         res.json(addon);
     } catch (e: any) { res.status(400).json(e.message); }
@@ -80,10 +87,15 @@ export const createAddon = async (req: Request, res: Response) => {
 export const updateAddon = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, price } = req.body;
+        const { name, price, calories, protein } = req.body;
         const addon = await prisma.addon.update({
             where: { id: Number(id) },
-            data: { name, price: Number(price) }
+            data: {
+                name,
+                price: Number(price),
+                calories: calories !== undefined && calories !== null && calories !== '' ? Number(calories) : 0,
+                protein: protein !== undefined && protein !== null && protein !== '' ? Number(protein) : 0
+            }
         });
         await invalidateMenuCache();
         res.json(addon);
@@ -106,10 +118,17 @@ export const deleteAddon = async (req: Request, res: Response) => {
 // -- MENU ITEMS --
 export const createMenuItem = async (req: Request, res: Response) => {
     try {
-        const { category, name, desc, price, isVeg, imageUrl, addonList } = req.body;
+        const { category, name, desc, price, isVeg, imageUrl, addonList, calories, protein } = req.body;
         const menuItem = await prisma.menuItem.create({
             data: {
-                category, name, desc, price: Number(price), veg: Boolean(isVeg), imageUrl,
+                category,
+                name,
+                desc,
+                price: Number(price),
+                veg: Boolean(isVeg),
+                imageUrl,
+                calories: calories !== undefined && calories !== null && calories !== '' ? Number(calories) : 0,
+                protein: protein !== undefined && protein !== null && protein !== '' ? Number(protein) : 0,
                 addons: { connect: addonList ? addonList.map((addon: any) => ({ id: addon.id })) : [] }
             }
         });
@@ -121,11 +140,18 @@ export const createMenuItem = async (req: Request, res: Response) => {
 export const updateMenuItem = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { category, name, desc, price, isVeg, imageUrl, addonList } = req.body;
+        const { category, name, desc, price, isVeg, imageUrl, addonList, calories, protein } = req.body;
         const menuItem = await prisma.menuItem.update({
             where: { id: Number(id) },
             data: {
-                category, name, desc, price: Number(price), veg: Boolean(isVeg), imageUrl,
+                category,
+                name,
+                desc,
+                price: Number(price),
+                veg: Boolean(isVeg),
+                imageUrl,
+                calories: calories !== undefined && calories !== null && calories !== '' ? Number(calories) : 0,
+                protein: protein !== undefined && protein !== null && protein !== '' ? Number(protein) : 0,
                 addons: { set: addonList ? addonList.map((addon: any) => ({ id: addon.id })) : [] }
             }
         });

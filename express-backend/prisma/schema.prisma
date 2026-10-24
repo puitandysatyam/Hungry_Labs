@@ -24,6 +24,8 @@ model MenuItem {
   price      Float
   veg        Boolean
   imageUrl   String?
+  calories   Int?        @default(0)
+  protein    Float?      @default(0)
   addons     Addon[]     @relation("MenuAddons")
   orderItems OrderItem[]
 }
@@ -32,6 +34,8 @@ model Addon {
   id         Int         @id @default(autoincrement())
   name       String
   price      Float
+  calories   Int?        @default(0)
+  protein    Float?      @default(0)
   menuItems  MenuItem[]  @relation("MenuAddons")
   orderItems OrderItem[] @relation("OrderItemAddons")
 }

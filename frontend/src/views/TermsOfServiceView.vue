@@ -13,22 +13,22 @@
     <!-- Key Terms Highlights -->
     <section class="highlights-grid">
       <div class="card highlight-card">
-        <div class="highlight-icon">🍳</div>
+        <div class="highlight-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
         <h3>Fresh Preparation</h3>
         <p>Every meal is cooked to order immediately after online payment confirmation.</p>
       </div>
       <div class="card highlight-card">
-        <div class="highlight-icon">⏱️</div>
+        <div class="highlight-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
         <h3>Express Delivery</h3>
         <p>Target delivery within 30–45 minutes, with live kitchen order tracking.</p>
       </div>
       <div class="card highlight-card">
-        <div class="highlight-icon">🔄</div>
+        <div class="highlight-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></div>
         <h3>Fair Refund Policy</h3>
         <p>Instant support and resolution for missing, damaged, or spilled items.</p>
       </div>
       <div class="card highlight-card">
-        <div class="highlight-icon">🔒</div>
+        <div class="highlight-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
         <h3>Transparent Billing</h3>
         <p>No hidden charges; all addon prices and taxes are clearly itemized before payment.</p>
       </div>

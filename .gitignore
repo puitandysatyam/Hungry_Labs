@@ -3,3 +3,4 @@ backend/src/main/resources/application.properties
 .env
 .env.*
 !.env.example
+scratch_screenshots/

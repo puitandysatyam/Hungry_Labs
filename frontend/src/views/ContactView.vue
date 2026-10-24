@@ -10,28 +10,28 @@
     <!-- Quick Info Cards -->
     <section class="contact-cards-grid">
       <div class="card info-card">
-        <div class="info-icon">📞</div>
+        <div class="info-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
         <h3>Hotline & WhatsApp</h3>
         <p class="info-highlight">{{ FORMATTED_PHONE }}</p>
         <p class="text-sm text-muted">Direct kitchen dispatch line</p>
       </div>
 
       <div class="card info-card">
-        <div class="info-icon">✉️</div>
+        <div class="info-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
         <h3>Email Support</h3>
         <p class="info-highlight">{{ CONTACT_EMAIL }}</p>
         <p class="text-sm text-muted">Avg. response within 2 hours</p>
       </div>
 
       <div class="card info-card">
-        <div class="info-icon">📍</div>
+        <div class="info-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
         <h3>Kitchen & Lab HQ</h3>
         <p class="info-highlight">Plot 42, Tech Park Blvd</p>
         <p class="text-sm text-muted">Sector 5, Bangalore 560102</p>
       </div>
 
       <div class="card info-card">
-        <div class="info-icon">🕒</div>
+        <div class="info-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
         <h3>Operating Hours</h3>
         <p class="info-highlight">11:00 AM – 11:30 PM</p>
         <p class="text-sm text-muted">7 Days a Week, Rain or Shine</p>
@@ -47,7 +47,7 @@
 
         <!-- Success Message -->
         <div v-if="submitted" class="success-banner card">
-          <div class="success-icon">🎉</div>
+          <div class="success-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
           <h3>Message Received, Scientist!</h3>
           <p>
             Your inquiry has been logged under ticket <strong>#{{ ticketId }}</strong>.
@@ -105,11 +105,11 @@
             <div class="form-group">
               <label for="category">Inquiry Subject *</label>
               <select id="category" v-model="form.category" class="form-control" required>
-                <option value="order_issue">🚨 Order Issue / Missing Item</option>
-                <option value="feedback">🍔 Food Feedback & Compliments</option>
-                <option value="bulk_order">🎉 Party & Bulk Catering</option>
-                <option value="partnership">🤝 Franchise & Business Partnership</option>
-                <option value="general">💬 General Inquiry</option>
+                <option value="order_issue">Order Issue / Missing Item</option>
+                <option value="feedback">Food Feedback & Compliments</option>
+                <option value="bulk_order">Party & Bulk Catering</option>
+                <option value="partnership">Franchise & Business Partnership</option>
+                <option value="general">General Inquiry</option>
               </select>
             </div>
           </div>
@@ -148,7 +148,7 @@
             :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">Sending Message...</span>
-            <span v-else>Transmit Message 🚀</span>
+            <span v-else>Send Message</span>
           </button>
         </form>
       </section>
