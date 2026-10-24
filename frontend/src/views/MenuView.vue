@@ -1006,30 +1006,48 @@ onMounted(() => {
     gap: 8px;
     margin-bottom: 16px;
   }
+  .layer-label {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 4px;
+  }
   .diet-pills {
     width: 100%;
-    justify-content: space-around;
+    justify-content: space-between;
+    flex-wrap: wrap;
   }
   .diet-pill {
-    padding: 6px 12px;
+    flex: 1 1 30%;
+    max-width: 32%;
+    min-width: 28%;
+    white-space: normal;
+    text-align: center;
+    padding: 7px 8px;
     font-size: 0.84rem;
+    gap: 4px;
+    line-height: 1.15;
+  }
+  .pill-icon {
+    font-size: 0.9rem;
   }
   .category-layer-section {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     padding-bottom: 6px;
     margin-bottom: 24px;
   }
   .category-filters {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 8px;
-    padding: 2px 4px;
+    padding: 0 4px;
   }
   .filter-btn {
-    white-space: nowrap;
-    padding: 8px 16px;
+    flex: 1 1 45%;
+    max-width: 48%;
+    white-space: normal;
+    text-align: center;
+    padding: 8px 12px;
     font-size: 0.85rem;
+    line-height: 1.2;
   }
   .menu-grid {
     grid-template-columns: 1fr;
