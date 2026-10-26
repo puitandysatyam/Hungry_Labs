@@ -1,86 +1,52 @@
 import { Request, Response } from 'express';
-import prisma from '../config/db';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import crypto from 'crypto';
+import * as backupService from '../services/backupService';
+import { requireAuth, requireAdmin } from '../middlewares/auth';
 
-const s3Client = new S3Client({
-    endpoint: process.env.B2_ENDPOINT,
-    region: "us-east-005",
-    credentials: {
-        accessKeyId: process.env.B2_APPLICATION_KEY_ID || process.env.B2_KEY_ID || '',
-        secretAccessKey: process.env.B2_APPLICATION_KEY || process.env.B2_APP_KEY || ''
-    }
-});
-
-export const createBackup = async (req: Request, res: Response): Promise<void> => {
+/**
+ * POST /api/admin/backup/run
+ * Manually trigger a database backup (admin only).
+ */
+export const runBackup = async (req: Request, res: Response) => {
     try {
-        const authHeader = req.headers.authorization;
-        const cronSecret = process.env.CRON_SECRET;
-
-        // Security: Always require CRON_SECRET for database backups
-        if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-            res.status(401).json({ error: 'Unauthorized request: Valid CRON_SECRET required.' });
-            return;
+        const result = await backupService.runDatabaseBackup();
+        if (result.success) {
+            return res.json({
+                success: true,
+                message: 'Database backup completed successfully',
+                objectKey: result.objectKey,
+                sizeBytes: result.sizeBytes,
+                startedAt: result.startedAt,
+                completedAt: result.completedAt
+            });
         }
-
-        console.log("Starting DB Backup...");
-
-        // Fetch all tables (explicitly omit password hashes from user export for safety)
-        const [
-            users,
-            menuItems,
-            addons,
-            orders,
-            orderItems,
-            payments,
-            coupons,
-            carouselImages
-        ] = await Promise.all([
-            prisma.user.findMany({
-                select: { id: true, name: true, email: true, phone: true, role: true }
-            }),
-            prisma.menuItem.findMany(),
-            prisma.addon.findMany(),
-            prisma.order.findMany(),
-            prisma.orderItem.findMany(),
-            prisma.payment.findMany(),
-            prisma.coupon.findMany(),
-            prisma.carouselImage.findMany()
-        ]);
-
-        const dbDump = {
-            timestamp: new Date().toISOString(),
-            data: {
-                users,
-                menuItems,
-                addons,
-                orders,
-                orderItems,
-                payments,
-                coupons,
-                carouselImages
-            }
-        };
-
-        const jsonString = JSON.stringify(dbDump, null, 2);
-        
-        // Upload to B2
-        const dateStr = new Date().toISOString().split('T')[0];
-        const filename = `backups/db-backup-${dateStr}-${crypto.randomUUID().slice(0, 8)}.json`;
-
-        const command = new PutObjectCommand({
-            Bucket: process.env.B2_BUCKET_NAME || process.env.BUCKET_NAME || 'HungryLab-WebsiteFiles',
-            Key: filename,
-            Body: jsonString,
-            ContentType: 'application/json'
+        return res.status(500).json({
+            success: false,
+            error: result.error || 'Backup failed'
         });
-
-        await s3Client.send(command);
-
-        console.log(`Backup completed successfully: ${filename}`);
-        res.status(200).json({ success: true, filename });
-    } catch (error: any) {
-        console.error("Backup failed:", error);
-        res.status(500).json({ error: error.message });
+    } catch (e: any) {
+        console.error('[BackupController] Error:', e.message);
+        return res.status(500).json({ error: e.message || 'Backup failed.' });
     }
+};
+
+/**
+ * GET /api/admin/backup/jobs
+ * List backup jobs (admin only).
+ */
+export const listBackupJobs = async (req: Request, res: Response) => {
+    try {
+        const jobs = await (require('../config/db') as any).backupJob.findMany({
+            orderBy: { startedAt: 'desc' },
+            take: 20
+        });
+        return res.json({ jobs });
+    } catch (e: any) {
+        console.error('[BackupController] List error:', e.message);
+        return res.status(500).json({ error: e.message || 'Failed to list backup jobs.' });
+    }
+};
+
+export default {
+    runBackup,
+    listBackupJobs
 };

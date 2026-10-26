@@ -20,15 +20,19 @@ const getTransporter = () => {
     });
 };
 
+const getFromEmail = () => process.env.EMAIL_FROM || process.env.SUPPORT_EMAIL || 'thehungrylab.kitchen@gmail.com';
+const getSupportPhone = () => process.env.SUPPORT_PHONE || '6291872593';
+
 export const sendOrderConfirmation = async (
     toEmail: string,
     customerName: string,
     orderId: number,
     paymentId: string,
-    amount: number
+    amount: number,
+    attachments?: any[]
 ) => {
-    const fromEmail = process.env.EMAIL_FROM || process.env.SUPPORT_EMAIL || 'thehungrylab.kitchen@gmail.com';
-    const supportPhone = process.env.SUPPORT_PHONE || '6291872593';
+    const fromEmail = getFromEmail();
+    const supportPhone = getSupportPhone();
 
     const subject = `The Hungry Lab: Order #${orderId} Confirmed!`;
     const text = `Hi ${customerName || 'Food Lover'},\n\n` +
@@ -69,11 +73,76 @@ export const sendOrderConfirmation = async (
             to: toEmail,
             subject,
             text,
-            html
+            html,
+            attachments
         });
         console.log(`[EmailService] Order confirmation successfully sent to ${toEmail}`);
     } catch (error) {
         console.error(`[EmailService] Failed to send order confirmation to ${toEmail}:`, error);
+    }
+};
+
+export const sendInvoiceEmail = async (
+    toEmail: string,
+    customerName: string,
+    orderId: number,
+    invoiceNumber: string,
+    pdfBuffer: Buffer,
+    amount: number
+) => {
+    const fromEmail = getFromEmail();
+    const supportPhone = getSupportPhone();
+
+    const subject = `The Hungry Lab: Invoice #${invoiceNumber} for Order #${orderId}`;
+    const text = `Hi ${customerName || 'Food Lover'},\n\n` +
+        `Please find attached your invoice for Order #${orderId}.\n\n` +
+        `Invoice Number: ${invoiceNumber}\n` +
+        `Order ID: #${orderId}\n` +
+        `Total Amount: ₹${amount.toFixed(2)}\n\n` +
+        `Thank you for ordering with The Hungry Lab!\n\n` +
+        `Questions? Call us at +91 ${supportPhone} or reply to this email (${fromEmail}).\n\n` +
+        `— The Hungry Lab Team`;
+
+    const html = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #ff5a30; margin-top: 0;">Invoice #${invoiceNumber} 🧾</h2>
+            <p>Hi <strong>${customerName || 'Food Lover'}</strong>,</p>
+            <p>Please find attached your invoice for Order #${orderId} from The Hungry Lab.</p>
+            <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 4px 0;"><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+                <p style="margin: 4px 0;"><strong>Order ID:</strong> #${orderId}</p>
+                <p style="margin: 4px 0;"><strong>Total Amount:</strong> ₹${amount.toFixed(2)}</p>
+            </div>
+            <p style="font-size: 0.9em; color: #64748b;">
+                The invoice PDF is attached to this email. For any questions, contact our kitchen hotline at <strong>+91 ${supportPhone}</strong> or email <strong>${fromEmail}</strong>.
+            </p>
+        </div>
+    `;
+
+    try {
+        const transporter = getTransporter();
+        if (!transporter) {
+            console.log(`[EmailService] Simulated invoice email sent to ${toEmail} for Invoice #${invoiceNumber}`);
+            return;
+        }
+
+        await transporter.sendMail({
+            from: `"The Hungry Lab" <${fromEmail}>`,
+            to: toEmail,
+            subject,
+            text,
+            html,
+            attachments: [
+                {
+                    filename: `invoice-${invoiceNumber}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf'
+                }
+            ]
+        });
+        console.log(`[EmailService] Invoice email successfully sent to ${toEmail}`);
+    } catch (error) {
+        console.error(`[EmailService] Failed to send invoice email to ${toEmail}:`, error);
     }
 };
 

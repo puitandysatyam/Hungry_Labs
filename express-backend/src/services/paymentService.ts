@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import prisma from '../config/db';
 import { sendOrderConfirmation } from './emailService';
+import { generateAndStoreInvoice } from './invoiceService';
 
 interface VerifyPaymentParams {
     orderId: number;
@@ -97,6 +98,9 @@ export const verifyPayment = async ({
             updatedOrder.totalAmount
         ).catch(err => console.error("[Razorpay] Error sending order confirmation email:", err));
     }
+
+    // Auto-generate invoice and upload to B2
+    generateAndStoreInvoice(updatedOrder.id).catch(err => console.error("[Razorpay] Error generating invoice:", err));
 
     return {
         success: true,
@@ -351,6 +355,9 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
                     updatedOrder.totalAmount
                 ).catch(err => console.error("[Webhook] Error sending confirmation email:", err));
             }
+
+            // Auto-generate invoice via webhook
+            generateAndStoreInvoice(updatedOrder.id).catch(err => console.error("[Webhook] Error generating invoice:", err));
         } else if (event === 'payment.failed') {
             if (payment.status !== 'SUCCESS') {
                 await prisma.$transaction([

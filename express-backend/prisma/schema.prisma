@@ -53,6 +53,7 @@ model Order {
   createdAt       DateTime    @default(now())
   orderItems      OrderItem[]
   payment         Payment?
+  invoice         Invoice?
 }
 
 model OrderItem {
@@ -92,4 +93,30 @@ model CarouselImage {
   imageUrl  String
   active    Boolean  @default(true)
   order     Int      @default(0)
+}
+
+model Invoice {
+  id          Int      @id @default(autoincrement())
+  orderId     Int      @unique
+  order       Order    @relation(fields: [orderId], references: [id])
+  invoiceNumber String @unique
+  pdfUrl      String
+  b2ObjectKey String
+  amount      Float
+  taxAmount   Float    @default(0)
+  totalAmount Float
+  status      String   @default("ISSUED")
+  issuedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BackupJob {
+  id          Int      @id @default(autoincrement())
+  type        String   @default("DATABASE")
+  status      String   @default("PENDING")
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  objectKey   String?
+  sizeBytes   Int?
+  error       String?
 }

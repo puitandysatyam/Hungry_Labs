@@ -8,8 +8,11 @@ import orderRoutes from '../src/routes/orders';
 import adminRoutes from '../src/routes/admin';
 import paymentRoutes from '../src/routes/payment';
 import contactRoutes from '../src/routes/contact';
+import invoiceRoutes from '../src/routes/invoice';
+import backupRoutes from '../src/routes/backup';
 import { rateLimiterMiddleware } from '../src/middlewares/rateLimiter';
 import { createRazorpayOrder, verifyPaymentSignatureDirect } from '../src/controllers/paymentController';
+import { startBackupCron } from '../src/services/backupService';
 
 const app = express();
 
@@ -75,6 +78,13 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/admin', backupRoutes);
+
+// Start scheduled database backup cron (only in production-like or when explicitly enabled)
+if (process.env.ENABLE_BACKUP_CRON === 'true') {
+    startBackupCron();
+}
 
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
