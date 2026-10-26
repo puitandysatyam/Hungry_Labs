@@ -144,7 +144,7 @@
           <p><strong>Grievance & Data Privacy Officer:</strong> The Hungry Lab Compliance Team</p>
           <p><strong>Email:</strong> <a :href="'mailto:' + CONTACT_EMAIL">{{ CONTACT_EMAIL }}</a></p>
           <p><strong>Support Hotline:</strong> {{ FORMATTED_PHONE }} (11:00 AM – 11:00 PM IST)</p>
-          <p><strong>Headquarters:</strong> The Hungry Lab Kitchen, Plot 42, Tech Park Boulevard, Sector 5, Bangalore, Karnataka, India</p>
+          <p><strong>Headquarters:</strong> The Hungry Lab Kitchen, Bansdroni, Kolkata, West Bengal, India</p>
           <p class="text-sm text-muted mt-2">We strive to acknowledge and resolve all privacy inquiries within 48 business hours.</p>
         </div>
       </section>

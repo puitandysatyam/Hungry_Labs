@@ -51,11 +51,32 @@
 
     <!-- Global Auth Modal -->
     <AuthModal :show="showAuth" @close="showAuth = false" />
+
+    <!-- Mobile-First Bottom Navigation -->
+    <nav class="mobile-bottom-nav" v-if="isMobile">
+      <a href="/" class="mobile-nav-item" :class="{ active: route.path === '/' }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 12v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10M15 12l3-3m0 0l-3 3M3 12l7 7"/></svg>
+        <span>Home</span>
+      </a>
+      <a href="/menu" class="mobile-nav-item" :class="{ active: route.path === '/menu' }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <span>Menu</span>
+      </a>
+      <a href="/checkout" class="mobile-nav-item cart-link-mobile" :class="{ active: route.path === '/checkout', 'has-items': cartStore.cartCount > 0 }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        <span>Cart</span>
+        <span class="cart-badge" v-if="cartStore.cartCount > 0">{{ cartStore.cartCount }}</span>
+      </a>
+      <a href="/history" class="mobile-nav-item" :class="{ active: route.path === '/history' }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+        <span>Orders</span>
+      </a>
+    </nav>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCartStore } from './stores/cart'
 import { useAuthStore } from './stores/auth'
@@ -64,8 +85,21 @@ import AuthModal from './components/AuthModal.vue'
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 const route = useRoute()
+const isMobile = ref(window.innerWidth <= 640)
 
 const showAuth = ref(false)
+
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 640
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+})
 
 // Open modal automatically if booted from a protected route
 watch(() => route.query.login, (newVal) => {
@@ -278,6 +312,21 @@ watch(() => route.query.login, (newVal) => {
     flex-wrap: wrap;
     gap: 14px;
   }
+
+  /* Hide desktop cart link, show bottom nav */
+  .nav-links .cart-link {
+    display: none;
+  }
+  .nav-links .btn-login,
+  .nav-links .btn-logout {
+    display: none;
+  }
+}
+
+/* Tablet+: hide mobile bottom nav */
+@media (min-width: 641px) {
+  .mobile-bottom-nav { display: none !important; }
+  .mobile-nav-item { display: none !important; }
 }
 
 /* Global Transition for Router View */

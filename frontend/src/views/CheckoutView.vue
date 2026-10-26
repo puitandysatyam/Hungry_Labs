@@ -106,7 +106,7 @@
           <div class="customer-details">
             <div class="form-group">
               <label for="customerName">Full Name *</label>
-              <input type="text" id="customerName" v-model="formData.customerName" placeholder="e.g. Satyam Sharma" class="form-input" required />
+              <input type="text" id="customerName" v-model="formData.customerName"                 placeholder="e.g. John Doe" class="form-input" required />
             </div>
             <div class="form-group mt-2">
               <label for="customerEmail">Email Address *</label>

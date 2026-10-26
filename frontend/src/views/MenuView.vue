@@ -95,8 +95,9 @@
 
     <!-- Error State -->
     <div v-else-if="error" class="error-state">
+      <img src="https://cdn-icons-png.flaticon.com/512/276/276991.png" alt="Warning" class="error-icon" />
       <div class="error-box">
-        <h3>Grill is Resting!</h3>
+        <h3>Something Went Wrong</h3>
         <p class="text-muted">{{ error }}</p>
         <button @click="fetchMenu" class="btn btn-primary mt-3">Retry</button>
       </div>
@@ -238,115 +239,10 @@ const showToast = ref(false)
 const toastMessage = ref('')
 let toastTimeout = null
 
-// Fallback high-energy fast food items if backend DB is offline
-const fallbackMenuItems = [
-  {
-    id: 1,
-    name: "Crispy Paneer Royale Burger",
-    category: "Burgers",
-    desc: "Cottage cheese patty with tandoori mayo, crisp iceberg lettuce, and jalapeños in a toasted brioche bun.",
-    price: 189,
-    veg: true,
-    calories: 480,
-    protein: 17,
-    imageUrl: "/Menu 1.png",
-    addonList: [
-      { id: 101, name: "Extra Melted Cheddar", price: 30, calories: 95, protein: 5.5 },
-      { id: 102, name: "Spicy Chipotle Dip", price: 25, calories: 75, protein: 1.0 },
-      { id: 103, name: "Jalapeño Crunch", price: 20, calories: 15, protein: 0.5 }
-    ]
-  },
-  {
-    id: 2,
-    name: "Smoky BBQ Chicken Smash Burger",
-    category: "Burgers",
-    desc: "Double grilled chicken patties smothered in hickory BBQ glaze, caramelized onions, and melted cheese.",
-    price: 249,
-    veg: false,
-    calories: 620,
-    protein: 34,
-    imageUrl: "/Menu 2.png",
-    addonList: [
-      { id: 101, name: "Extra Melted Cheddar", price: 30, calories: 95, protein: 5.5 },
-      { id: 104, name: "Crispy Bacon Strip", price: 50, calories: 120, protein: 6.0 },
-      { id: 105, name: "Smoky BBQ Sauce", price: 25, calories: 60, protein: 0.5 }
-    ]
-  },
-  {
-    id: 3,
-    name: "Loaded Cheese & Corn Melt Sandwich",
-    category: "Sandwiches",
-    desc: "Triple layered buttered sourdough packed with sweet corn, mozzarella, bell peppers, and lab herbs.",
-    price: 169,
-    veg: true,
-    calories: 380,
-    protein: 15,
-    imageUrl: "/Menu 3.png",
-    addonList: [
-      { id: 101, name: "Extra Melted Cheddar", price: 30 },
-      { id: 106, name: "Garlic Butter Crust", price: 20 }
-    ]
-  },
-  {
-    id: 4,
-    name: "Fiery Tandoori Chicken Club Sandwich",
-    category: "Sandwiches",
-    desc: "Succulent shredded tandoori chicken, mint mayo, fresh tomatoes, and fried egg layer.",
-    price: 219,
-    veg: false,
-    calories: 490,
-    protein: 29,
-    imageUrl: "/Menu 1.png",
-    addonList: [
-      { id: 101, name: "Extra Melted Cheddar", price: 30 },
-      { id: 102, name: "Spicy Chipotle Dip", price: 25 }
-    ]
-  },
-  {
-    id: 5,
-    name: "Golden Peri Peri Crinkle Fries",
-    category: "Fries",
-    desc: "Piping hot crinkle-cut golden potatoes tossed in our signature African peri peri spice blend.",
-    price: 129,
-    veg: true,
-    calories: 340,
-    protein: 5,
-    imageUrl: "/Menu 2.png",
-    addonList: [
-      { id: 101, name: "Extra Melted Cheddar", price: 30 },
-      { id: 102, name: "Spicy Chipotle Dip", price: 25 }
-    ]
-  },
-  {
-    id: 6,
-    name: "Loaded Bacon & Cheese Beast Fries",
-    category: "Fries",
-    desc: "Large bucket of crispy fries drenched in liquid warm cheddar, crispy bits, and chopped chives.",
-    price: 199,
-    veg: false,
-    calories: 520,
-    protein: 14,
-    imageUrl: "/Menu 3.png",
-    addonList: [
-      { id: 101, name: "Extra Melted Cheddar", price: 30 },
-      { id: 105, name: "Smoky BBQ Sauce", price: 25 }
-    ]
-  },
-  {
-    id: 7,
-    name: "Cold Brew Mocha Frost Shake",
-    category: "Beverages",
-    desc: "Rich espresso blended with dark chocolate ganache, creamy whole milk, and chocolate chips.",
-    price: 149,
-    veg: true,
-    calories: 240,
-    protein: 7,
-    imageUrl: "/Logo.png",
-    addonList: [
-      { id: 107, name: "Extra Espresso Shot", price: 35 }
-    ]
-  }
-]
+const resetFilters = () => {
+  selectedDiet.value = 'All'
+  selectedCategory.value = 'All'
+}
 
 // Estimate nutritional parameters if backend items don't provide them yet
 const getNutritionalInfo = (item) => {
@@ -364,6 +260,35 @@ const getNutritionalInfo = (item) => {
     return { calories: 150, protein: 2 }
   }
   return item.veg ? { calories: 390, protein: 14 } : { calories: 520, protein: 26 }
+}
+
+const fetchMenu = async () => {
+  try {
+    isLoading.value = true
+    error.value = null
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/menu/`)
+    if (!response.ok) throw new Error('Failed to load menu')
+    const data = await response.json()
+    
+    if (Array.isArray(data) && data.length > 0) {
+      menuItems.value = data.map(item => {
+        const nutri = getNutritionalInfo(item)
+        return {
+          ...item,
+          calories: item.calories || nutri.calories,
+          protein: item.protein || nutri.protein,
+          showCustomize: false,
+          selectedAddOnsLocal: []
+        }
+      })
+    } else {
+      error.value = 'No menu items available. Please try again later.'
+    }
+  } catch (err) {
+    error.value = 'Something went wrong. Unable to load the menu.'
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const uniqueCategories = computed(() => {
@@ -402,51 +327,6 @@ const getDefaultImage = (item) => {
   if (cat.includes('burger')) return '/Menu 1.png'
   if (cat.includes('sandwich')) return '/Menu 2.png'
   return '/Menu 3.png'
-}
-
-const resetFilters = () => {
-  selectedDiet.value = 'All'
-  selectedCategory.value = 'All'
-}
-
-const fetchMenu = async () => {
-  try {
-    isLoading.value = true
-    error.value = null
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/menu/`)
-    if (!response.ok) throw new Error('Failed to load menu')
-    const data = await response.json()
-    
-    if (Array.isArray(data) && data.length > 0) {
-      menuItems.value = data.map(item => {
-        const nutri = getNutritionalInfo(item)
-        return {
-          ...item,
-          calories: item.calories || nutri.calories,
-          protein: item.protein || nutri.protein,
-          showCustomize: false,
-          selectedAddOnsLocal: []
-        }
-      })
-    } else {
-      // Fallback to high quality fast food items
-      menuItems.value = fallbackMenuItems.map(item => ({
-        ...item,
-        showCustomize: false,
-        selectedAddOnsLocal: []
-      }))
-    }
-  } catch (err) {
-    console.warn("Backend menu fetch offline, using fast-food kitchen menu:", err)
-    // Fallback guarantees complete functionality and visual inspection works
-    menuItems.value = fallbackMenuItems.map(item => ({
-      ...item,
-      showCustomize: false,
-      selectedAddOnsLocal: []
-    }))
-  } finally {
-    isLoading.value = false
-  }
 }
 
 // STRICT REQUIREMENT 2: HIDE CUSTOMISE OPTION AFTER ADDING TO CART

@@ -26,8 +26,8 @@
       <div class="card info-card">
         <div class="info-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
         <h3>Kitchen & Lab HQ</h3>
-        <p class="info-highlight">Plot 42, Tech Park Blvd</p>
-        <p class="text-sm text-muted">Sector 5, Bangalore 560102</p>
+        <p class="info-highlight">Bansdroni, Kolkata</p>
+        <p class="text-sm text-muted">West Bengal, India 700070</p>
       </div>
 
       <div class="card info-card">
@@ -71,7 +71,7 @@
                 v-model.trim="form.name" 
                 type="text" 
                 class="form-control" 
-                placeholder="e.g. Satyam Sharma" 
+                placeholder="e.g. John Doe" 
                 required 
               />
             </div>
@@ -83,7 +83,7 @@
                 v-model.trim="form.email" 
                 type="email" 
                 class="form-control" 
-                placeholder="satyam@example.com" 
+                placeholder="e.g. user@example.com" 
                 required 
               />
             </div>

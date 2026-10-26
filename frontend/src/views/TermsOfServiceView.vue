@@ -153,7 +153,7 @@
       <section class="policy-section">
         <h2>10. Governing Law & Dispute Resolution</h2>
         <p>
-          These Terms of Service are governed by and construed in accordance with the substantive laws of India. Any disputes or claims arising out of or in connection with our services shall be subject to the exclusive jurisdiction of the competent courts in Bengaluru, Karnataka, India.
+          These Terms of Service are governed by and construed in accordance with the substantive laws of India. Any disputes or claims arising out of or in connection with our services shall be subject to the exclusive jurisdiction of the competent courts in Kolkata, West Bengal, India.
         </p>
       </section>
     </article>
