@@ -5,6 +5,9 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, generatePresignedUrl, getBucketName } from '../utils/s3';
 import { isCloudinaryConfigured, generateCloudinarySignature, uploadToCloudinary } from '../utils/cloudinary';
+import { initiateRefund } from '../services/paymentService';
+import { sendRefundNotification } from '../services/emailService';
+import { cleanupStalePendingOrders } from '../services/orderService';
 
 const invalidateMenuCache = async () => {
     if (redis) {
@@ -269,4 +272,136 @@ export const createCoupon = async (req: Request, res: Response) => {
         const coupon = await prisma.coupon.create({ data: req.body });
         res.json(coupon);
     } catch (e: any) { res.status(400).json(e.message); }
+};
+
+// -- ADMIN REFUND --
+/**
+ * Admin-initiated refund for a paid order.
+ * POST /api/admin/payment/refund/:orderId
+ * Body: { amount? (paise), reason? }
+ */
+export const adminRefund = async (req: Request, res: Response) => {
+    try {
+        const { orderId } = req.params;
+        const { amount, reason } = req.body;
+
+        const id = Number(orderId);
+        if (!id || isNaN(id)) {
+            return res.status(400).json({ error: "Valid order ID is required." });
+        }
+
+        const result = await initiateRefund({
+            orderId: id,
+            amount,
+            reason: reason || "Admin-initiated refund"
+        });
+
+        // Send refund notification email
+        const payment = await prisma.payment.findFirst({
+            where: { orderId: id },
+            include: { order: true }
+        });
+
+        if (payment?.order.customerEmail) {
+            await sendRefundNotification(
+                payment.order.customerEmail,
+                payment.order.customerName || 'Food Lover',
+                id,
+                payment.order.totalAmount,
+                result.refundId,
+                reason || "Admin-initiated refund"
+            ).catch(err => console.error("[AdminRefund] Refund email failed:", err));
+        }
+
+        res.json(result);
+    } catch (e: any) {
+        res.status(400).json({ error: e.message || "Refund failed." });
+    }
+};
+
+// -- STALE ORDER CLEANUP --
+/**
+ * Cleanup stale PENDING orders older than 30 minutes.
+ * POST /api/admin/orders/cleanup-pending (can be triggered by Vercel cron)
+ */
+export const cleanupPendingOrders = async (req: Request, res: Response) => {
+    try {
+        const result = await cleanupStalePendingOrders();
+        res.json({
+            success: true,
+            message: `Processed ${result.total} stale orders: ${result.refunded} refunded, ${result.cancelled} cancelled`,
+            ...result
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message || "Cleanup failed." });
+    }
+};
+
+// -- PAYMENT RECONCILIATION REPORT --
+/**
+ * Reconcile local payment records with Razorpay state.
+ * GET /api/admin/payments/reconcile
+ * Flags orders where payment status doesn't match order status.
+ */
+export const reconcilePayments = async (req: Request, res: Response) => {
+    try {
+        // Get all orders with payments
+        const orders = await prisma.order.findMany({
+            include: {
+                payment: true,
+                orderItems: { include: { menuItem: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const mismatches = orders.map(order => {
+            const payment = order.payment;
+            let issue: string | null = null;
+            let severity: 'info' | 'warning' | 'error' = 'info';
+
+            if (!payment) {
+                issue = "No payment record exists for this order";
+                severity = order.status === 'CONFIRMED' ? 'error' : 'warning';
+            } else if (payment.status === 'SUCCESS' && order.status !== 'CONFIRMED') {
+                issue = "Payment is SUCCESS but order is not CONFIRMED";
+                severity = 'error';
+            } else if (payment.status === 'FAILED' && order.status === 'CONFIRMED') {
+                issue = "Payment is FAILED but order is CONFIRMED";
+                severity = 'error';
+            } else if (order.status === 'PENDING' && payment && payment.status === 'CREATED') {
+                // Check if order is older than 30 min
+                const ageMinutes = (Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60);
+                if (ageMinutes > 30) {
+                    issue = "Payment CREATED but order stuck in PENDING for >30 min";
+                    severity = 'warning';
+                }
+            } else if (payment && payment.refunded && order.status !== 'REFUNDED') {
+                issue = "Payment marked refunded but order status not updated";
+                severity = 'warning';
+            }
+
+            return issue ? {
+                orderId: order.id,
+                customerName: order.customerName,
+                customerEmail: order.customerEmail,
+                orderStatus: order.status,
+                paymentStatus: payment?.status || 'NONE',
+                amount: order.totalAmount,
+                razorpayOrderId: payment?.razorpayOrderId || null,
+                razorpayPaymentId: payment?.razorpayPaymentId || null,
+                refunded: payment?.refunded || false,
+                issue,
+                severity,
+                createdAt: order.createdAt
+            } : null;
+        }).filter(Boolean);
+
+        res.json({
+            totalOrders: orders.length,
+            mismatchesCount: mismatches.length,
+            mismatches: mismatches as any[]
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message || "Reconciliation failed." });
+    }
 };

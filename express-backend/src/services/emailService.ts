@@ -77,6 +77,66 @@ export const sendOrderConfirmation = async (
     }
 };
 
+export const sendRefundNotification = async (
+    toEmail: string,
+    customerName: string,
+    orderId: number,
+    amount: number,
+    refundId: string,
+    reason?: string
+) => {
+    const fromEmail = process.env.EMAIL_FROM || process.env.SUPPORT_EMAIL || 'thehungrylab.kitchen@gmail.com';
+    const supportPhone = process.env.SUPPORT_PHONE || '6291872593';
+
+    const subject = `The Hungry Lab: Refund Issued for Order #${orderId}`;
+    const text = `Hi ${customerName || 'Food Lover'},\n\n` +
+        `A refund has been issued for your order!\n` +
+        `Order ID: #${orderId}\n` +
+        `Refund Amount: ₹${amount.toFixed(2)}\n` +
+        `Refund ID: ${refundId}\n` +
+        (reason ? `Reason: ${reason}\n` : '') +
+        `\nThe refunded amount will be credited back to your original payment method within 5-7 business days.\n\n` +
+        `Questions? Call us at +91 ${supportPhone} or reply to this email (${fromEmail}).\n\n` +
+        `— The Hungry Lab Team`;
+
+    const html = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #10b981; margin-top: 0;">Refund Issued 💰</h2>
+            <p>Hi <strong>${customerName || 'Food Lover'}</strong>,</p>
+            <p>A refund has been processed for your order with The Hungry Lab.</p>
+            <div style="background-color: #f0fdf4; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+                <p style="margin: 4px 0;"><strong>Order ID:</strong> #${orderId}</p>
+                <p style="margin: 4px 0;"><strong>Refund Amount:</strong> ₹${amount.toFixed(2)}</p>
+                <p style="margin: 4px 0;"><strong>Refund ID:</strong> ${refundId}</p>
+                ${reason ? `<p style="margin: 4px 0;"><strong>Reason:</strong> ${reason}</p>` : ''}
+            </div>
+            <p style="font-size: 0.9em; color: #64748b;">
+                The refunded amount will be credited back to your original payment method within 5-7 business days.<br/>
+                Need help? Contact our kitchen hotline at <strong>+91 ${supportPhone}</strong> or email <strong>${fromEmail}</strong>.
+            </p>
+        </div>
+    `;
+
+    try {
+        const transporter = getTransporter();
+        if (!transporter) {
+            console.log(`[EmailService] Simulated refund notification sent to ${toEmail} for Order #${orderId}`);
+            return;
+        }
+
+        await transporter.sendMail({
+            from: `"The Hungry Lab" <${fromEmail}>`,
+            to: toEmail,
+            subject,
+            text,
+            html
+        });
+        console.log(`[EmailService] Refund notification successfully sent to ${toEmail}`);
+    } catch (error) {
+        console.error(`[EmailService] Failed to send refund notification to ${toEmail}:`, error);
+    }
+};
+
 export const sendContactNotification = async (inquiry: {
     name: string;
     email: string;

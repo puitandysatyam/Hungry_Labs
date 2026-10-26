@@ -5,7 +5,10 @@ import {
     createMenuItem, updateMenuItem, deleteMenuItem,
     getCarouselImages, createCarouselImage, updateCarouselImage, deleteCarouselImage,
     getUploadUrl, uploadDirectToCloudinary,
-    createCoupon
+    createCoupon,
+    adminRefund,
+    cleanupPendingOrders,
+    reconcilePayments
 } from '../controllers/adminController';
 import { createBackup } from '../controllers/backupController';
 import { requireAuth, requireAdmin } from '../middlewares/auth';
@@ -21,6 +24,7 @@ router.use(requireAuth, requireAdmin);
 router.get('/orders', getAllOrders);
 router.get('/orders/active', getActiveOrders);
 router.put('/orders/:id/status', updateOrderStatus);
+router.post('/orders/cleanup-pending', cleanupPendingOrders);
 
 // Addons
 router.get('/addons', getAddons);
@@ -45,5 +49,9 @@ router.post('/cloudinary-upload', uploadDirectToCloudinary);
 
 // Coupons
 router.post('/coupons', createCoupon);
+
+// Admin Payments & Refunds
+router.post('/payment/refund/:orderId', adminRefund);
+router.get('/payments/reconcile', reconcilePayments);
 
 export default router;

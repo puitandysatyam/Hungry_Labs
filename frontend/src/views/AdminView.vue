@@ -11,6 +11,7 @@
       <button :class="['tab-btn', { active: activeTab === 'menu' }]" @click="activeTab = 'menu'">Menu Items</button>
       <button :class="['tab-btn', { active: activeTab === 'addons' }]" @click="activeTab = 'addons'">Addons</button>
       <button :class="['tab-btn', { active: activeTab === 'coupons' }]" @click="activeTab = 'coupons'">Coupons</button>
+      <button :class="['tab-btn', { active: activeTab === 'refunds' }]" @click="activeTab = 'refunds'">Refunds</button>
       <button :class="['tab-btn', { active: activeTab === 'carousel' }]" @click="activeTab = 'carousel'">Carousel/Offers</button>
     </div>
 
@@ -289,6 +290,94 @@
       </form>
     </div>
 
+    <!-- ================= REFUNDS TAB ================= -->
+    <div v-if="activeTab === 'refunds'" class="tab-content card">
+      <div class="section-header">
+        <div>
+          <h3 class="mb-0">Refund Management</h3>
+          <small class="text-muted">Issue refunds for paid orders. Full or partial refunds supported.</small>
+        </div>
+        <button @click="fetchRefundableOrders" class="btn btn-secondary btn-sm">Refresh</button>
+      </div>
+
+      <div v-if="refundLoading" class="text-center" style="padding: 20px;">
+        <p>Loading refundable orders...</p>
+      </div>
+
+      <div v-else-if="refundableOrders.length === 0" class="empty-state text-center card">
+        <p>No refundable orders found.</p>
+        <p class="text-sm text-muted">Orders must be CONFIRMED or DELIVERED, paid, and not already refunded.</p>
+      </div>
+
+      <div v-else class="table-responsive mt-3">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Refundable Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="order in refundableOrders" :key="order.id">
+              <td>#{{ order.id }}</td>
+              <td>
+                <strong>{{ order.customerName }}</strong>
+                <div class="text-muted text-sm">{{ order.customerEmail }}</div>
+              </td>
+              <td><strong>₹{{ order.totalAmount.toFixed(2) }}</strong></td>
+              <td>
+                <span :class="['status-badge', getStatusClass(order.status)]">{{ order.status }}</span>
+              </td>
+              <td><strong>₹{{ order.totalAmount.toFixed(2) }}</strong></td>
+              <td>
+                <div class="table-btn-group">
+                  <button @click="openRefundModal(order)" class="btn btn-secondary btn-sm">Refund</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Refund Modal -->
+    <div v-if="showRefundModal" class="modal-overlay" @click.self="showRefundModal = false">
+      <div class="modal-content card" style="max-width: 480px;">
+        <h3 class="mb-3">{{ refundForm.id ? 'Issue Refund' : 'Issue Refund' }}</h3>
+        <form @submit.prevent="handleRefundSubmit" class="admin-form">
+          <div class="form-group">
+            <label>Order ID</label>
+            <input type="text" :value="refundForm.orderId" readonly class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Customer</label>
+            <input type="text" :value="refundForm.customerName" readonly class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Order Amount (₹)</label>
+            <input type="text" :value="refundForm.orderAmount" readonly class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Refund Amount (₹)</label>
+            <input type="number" v-model.number="refundForm.amount" required min="0" :max="refundForm.orderAmount" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Reason</label>
+            <textarea v-model="refundForm.reason" rows="2" placeholder="e.g. Customer cancelled, wrong item delivered" class="form-input"></textarea>
+          </div>
+          <div class="modal-actions mt-4">
+            <button type="button" class="btn btn-secondary" @click="showRefundModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="isRefunding">{{ isRefunding ? 'Processing...' : 'Issue Refund' }}</button>
+          </div>
+          <p v-if="refundStatus" class="status-msg mt-3" :class="refundStatus.type">{{ refundStatus.text }}</p>
+        </form>
+      </div>
+    </div>
+
     <!-- ================= MODALS ================= -->
     <!-- Menu Modal -->
     <div v-if="showMenuModal" class="modal-overlay" @click.self="showMenuModal = false">
@@ -493,6 +582,7 @@ watch(activeTab, (newTab) => {
   if (newTab === 'history') fetchOrderHistory()
   if (newTab === 'menu') fetchMenu()
   if (newTab === 'addons') fetchAddons()
+  if (newTab === 'refunds') fetchRefundableOrders()
 })
 
 // Computed Filters
@@ -688,11 +778,103 @@ const handleCouponSubmit = async () => {
   } catch (err) { couponStatus.value = "Error: " + err.message }
 }
 
+// Refunds State
+const refundableOrders = ref([])
+const refundLoading = ref(false)
+const showRefundModal = ref(false)
+const refundStatus = ref(null)
+const isRefunding = ref(false)
+const refundForm = ref({
+  id: null,
+  orderId: '',
+  customerName: '',
+  orderAmount: 0,
+  amount: 0,
+  reason: ''
+})
+
+const fetchRefundableOrders = async () => {
+  refundLoading.value = true
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders`, { headers: authStore.getAuthHeaders() })
+    if (!res.ok) throw new Error("Failed to load orders.")
+    const allOrders = await res.json()
+    // Filter: CONFIRMED or DELIVERED orders that are paid and not refunded
+    refundableOrders.value = allOrders.filter(o => 
+      (o.status === 'CONFIRMED' || o.status === 'DELIVERED') && o.payment && o.payment.status === 'SUCCESS' && !o.payment.refunded
+    )
+  } catch (e) {
+    console.error(e)
+    alert("Failed to load refundable orders: " + e.message)
+  } finally {
+    refundLoading.value = false
+  }
+}
+
+const openRefundModal = (order) => {
+  refundForm.value = {
+    id: order.id,
+    orderId: '#' + order.id,
+    customerName: order.customerName || 'Unknown',
+    orderAmount: order.totalAmount,
+    amount: order.totalAmount,
+    reason: ''
+  }
+  refundStatus.value = null
+  showRefundModal.value = true
+}
+
+const handleRefundSubmit = async () => {
+  if (!refundForm.value.amount || refundForm.value.amount <= 0) {
+    refundStatus.value = { type: 'error', text: "Please enter a valid refund amount." }
+    return
+  }
+  if (refundForm.value.amount > refundForm.value.orderAmount) {
+    refundStatus.value = { type: 'error', text: "Refund amount cannot exceed order amount." }
+    return
+  }
+
+  isRefunding.value = true
+  refundStatus.value = null
+  try {
+    // Convert ₹ to paise for backend
+    const amountInPaise = Math.round(refundForm.value.amount * 100)
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/payment/refund/${refundForm.value.id}`, {
+      method: 'POST',
+      headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        reason: refundForm.value.reason || 'Admin-initiated refund'
+      })
+    })
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}))
+      throw new Error(errJson.error || "Refund failed.")
+    }
+
+    const result = await res.json()
+    refundStatus.value = { type: 'success', text: `Refund of ₹${refundForm.value.amount.toFixed(2)} issued successfully! Refund ID: ${result.refundId}` }
+    
+    // Remove from list and refresh
+    refundableOrders.value = refundableOrders.value.filter(o => o.id !== refundForm.value.id)
+    
+    // Auto-close after 2 seconds
+    setTimeout(() => {
+      showRefundModal.value = false
+    }, 2000)
+  } catch (err) {
+    refundStatus.value = { type: 'error', text: "Refund failed: " + err.message }
+  } finally {
+    isRefunding.value = false
+  }
+}
+
 // Helpers
 const getStatusClass = (s) => {
   if (['CONFIRMED', 'DELIVERED', 'SUCCESS'].includes(s)) return 'status-green'
   if (['PREPARING', 'OUT_FOR_DELIVERY', 'PENDING'].includes(s)) return 'status-yellow'
-  if (['CANCELLED', 'FAILED'].includes(s)) return 'status-red'
+  if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(s)) return 'status-red'
   return 'status-gray'
 }
 
@@ -968,4 +1150,6 @@ fetchCarouselImages()
   .form-row { flex-direction: column; }
   .tab-btn { padding: 8px 14px; font-size: 0.85rem; }
 }
+
+.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
 </style>

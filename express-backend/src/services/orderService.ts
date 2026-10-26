@@ -1,5 +1,7 @@
 import prisma from '../config/db';
 import Razorpay from 'razorpay';
+import { initiateRefund } from './paymentService';
+import { sendRefundNotification } from './emailService';
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -201,5 +203,155 @@ export const placeOrder = async (data: any, authenticatedUserId?: number) => {
         etaMinutes: 30,
         razorpayOrderId: rzpOrder.id,
         amount: calculatedTotal
+    };
+};
+
+/**
+ * Cleanup stale PENDING orders older than 30 minutes.
+ * - If payment was captured by Razorpay but order never confirmed → auto-refund
+ * - If no payment at all → mark order as CANCELLED
+ * Returns summary of actions taken.
+ */
+export const cleanupStalePendingOrders = async () => {
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+    const staleOrders = await prisma.order.findMany({
+        where: {
+            status: "PENDING",
+            createdAt: { lt: thirtyMinutesAgo }
+        },
+        include: {
+            payment: true,
+            orderItems: { include: { menuItem: true } }
+        },
+        orderBy: { createdAt: 'asc' }
+    });
+
+    const results = {
+        total: staleOrders.length,
+        refunded: 0,
+        cancelled: 0,
+        errors: [] as string[]
+    };
+
+    for (const order of staleOrders) {
+        try {
+            const payment = order.payment;
+
+            if (payment && payment.status === 'SUCCESS' && payment.razorpayPaymentId) {
+                // Payment was captured but order never confirmed — auto-refund
+                await initiateRefund({
+                    orderId: order.id,
+                    amount: payment.amount,
+                    reason: "Auto-refund: Order stuck in PENDING beyond 30-minute window"
+                });
+
+                await prisma.order.update({
+                    where: { id: order.id },
+                    data: { status: "REFUNDED" }
+                });
+
+                // Send refund notification email
+                if (order.customerEmail) {
+                    await sendRefundNotification(
+                        order.customerEmail,
+                        order.customerName || 'Food Lover',
+                        order.id,
+                        order.totalAmount,
+                        payment.refundId || payment.razorpayPaymentId,
+                        "Auto-refund: Order stuck in PENDING beyond 30-minute window"
+                    ).catch(err => console.error("[Cleanup] Refund email failed:", err));
+                }
+
+                results.refunded++;
+            } else {
+                // No successful payment — cancel the order
+                await prisma.order.update({
+                    where: { id: order.id },
+                    data: { status: "CANCELLED" }
+                });
+
+                // Mark payment as failed if exists
+                if (payment && payment.status !== 'FAILED') {
+                    await prisma.payment.update({
+                        where: { id: payment.id },
+                        data: { status: "FAILED" }
+                    });
+                }
+
+                results.cancelled++;
+            }
+        } catch (err: any) {
+            results.errors.push(`Order #${order.id}: ${err.message}`);
+            console.error(`[Cleanup] Error processing order #${order.id}:`, err);
+        }
+    }
+
+    return results;
+};
+
+/**
+ * Cancel an order. Only allowed while status is CONFIRMED (before kitchen starts preparing).
+ * If already paid, triggers a refund.
+ */
+export const cancelOrder = async (orderId: number, reason?: string) => {
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { payment: true }
+    });
+
+    if (!order) {
+        throw new Error(`Order #${orderId} not found.`);
+    }
+
+    if (order.status === 'CANCELLED') {
+        throw new Error(`Order #${orderId} is already cancelled.`);
+    }
+
+    if (order.status === 'DELIVERED') {
+        throw new Error(`Cannot cancel order #${orderId} — already delivered.`);
+    }
+
+    if (order.status === 'PREPARING' || order.status === 'OUT_FOR_DELIVERY') {
+        throw new Error(`Cannot cancel order #${orderId} — already being prepared/dispatched.`);
+    }
+
+    // If paid and successful, initiate refund
+    if (order.payment && order.payment.status === 'SUCCESS' && order.payment.razorpayPaymentId) {
+        await initiateRefund({
+            orderId: order.id,
+            amount: order.payment.amount,
+            reason: reason || "Customer cancelled order"
+        });
+
+        await sendRefundNotification(
+            order.customerEmail || '',
+            order.customerName || 'Food Lover',
+            order.id,
+            order.totalAmount,
+            order.payment.refundId || order.payment.razorpayPaymentId,
+            reason || "Customer cancelled order"
+        ).catch(err => console.error("[CancelOrder] Refund email failed:", err));
+    }
+
+    // Mark order as cancelled
+    await prisma.order.update({
+        where: { id: orderId },
+        data: { status: "CANCELLED" }
+    });
+
+    // Mark payment as failed if not already
+    if (order.payment && order.payment.status !== 'FAILED' && order.payment.status !== 'SUCCESS') {
+        await prisma.payment.update({
+            where: { id: order.payment.id },
+            data: { status: "FAILED" }
+        });
+    }
+
+    return {
+        orderId: order.id,
+        status: "CANCELLED",
+        refunded: order.payment?.status === 'SUCCESS',
+        reason: reason || "Customer cancelled order"
     };
 };

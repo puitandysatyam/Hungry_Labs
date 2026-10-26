@@ -49,7 +49,9 @@
           <div class="total-info">
             <small class="text-muted d-block">Total</small>
             <span class="amount text-brand">₹{{ order.totalAmount.toFixed(2) }}</span>
+            <span v-if="order.status === 'REFUNDED'" class="refund-badge mt-1 d-block text-sm">Refunded</span>
           </div>
+          <button v-if="order.status === 'CONFIRMED'" @click="cancelOrder(order.id)" class="btn btn-outline mt-2 w-100">Cancel Order</button>
         </div>
       </div>
     </div>
@@ -102,6 +104,27 @@ onMounted(() => {
   fetchOrders()
 })
 
+const cancelOrder = async (orderId) => {
+  if (!confirm('Are you sure you want to cancel this order? A refund will be initiated if payment was successful.')) return
+
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/${orderId}/cancel`, {
+      method: 'POST',
+      headers: authStore.getAuthHeaders()
+    })
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}))
+      throw new Error(errJson.error || 'Failed to cancel order.')
+    }
+
+    await fetchOrders()
+    alert('Order cancelled successfully! Refund initiated if applicable.')
+  } catch (err) {
+    alert('Failed to cancel order: ' + err.message)
+  }
+}
+
 const getFriendlyStatus = (status) => {
   switch (status) {
     case 'CONFIRMED': return 'Payment Successful - Preparing'
@@ -112,6 +135,7 @@ const getFriendlyStatus = (status) => {
     case 'MANUAL_REVIEW_REQUIRED': return 'Refund Failed - Contact Support'
     case 'ON_HOLD': return 'Payment Disputed - On Hold'
     case 'PAYMENT PENDING': return 'Awaiting Payment'
+    case 'REFUNDED': return 'Refund Issued'
     default: return status
   }
 }
@@ -155,6 +179,18 @@ const formatDate = (dateStr) => {
 .status-yellow { background: #fff3cd; color: #856404; }
 .status-red { background: #f8d7da; color: #721c24; }
 .status-gray { background: #e2e3e5; color: #383d41; }
+
+.refund-badge { color: #10b981; font-weight: bold; font-size: 0.8rem; }
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid #dc2626;
+  color: #dc2626;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-outline:hover { background: #dc2626; color: white; }
 
 .order-body { padding: 24px; }
 .item-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;}

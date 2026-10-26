@@ -71,3 +71,34 @@ export const getUserOrders = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Failed to fetch orders." });
     }
 };
+
+/**
+ * Cancel an order (user-owned). Only allowed while CONFIRMED (before kitchen prepares).
+ * Body: { reason? }
+ */
+export const cancelOrder = async (req: Request, res: Response) => {
+    try {
+        const { orderId } = req.params;
+        const { reason } = req.body;
+        const requestingUser = (req as any).user;
+
+        const id = Number(orderId);
+        if (!id || isNaN(id)) {
+            return res.status(400).json({ error: "Valid order ID is required." });
+        }
+
+        // Authorization: user can only cancel their own orders unless ADMIN
+        const order = await prisma.order.findUnique({ where: { id } });
+        if (!order) {
+            return res.status(404).json({ error: "Order not found." });
+        }
+        if (requestingUser.role !== 'ADMIN' && String(order.customerId) !== String(requestingUser.id)) {
+            return res.status(403).json({ error: "Access denied — you can only cancel your own orders." });
+        }
+
+        const result = await orderService.cancelOrder(id, reason);
+        res.json(result);
+    } catch (e: any) {
+        res.status(400).json({ error: e.message || "Failed to cancel order." });
+    }
+};
