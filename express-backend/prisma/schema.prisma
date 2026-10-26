@@ -72,6 +72,9 @@ model Payment {
   razorpayOrderId   String   @unique
   razorpayPaymentId String?
   status            String
+  amount            Int      // amount in paise
+  refunded          Boolean  @default(false)
+  refundId          String?  // Razorpay refund ID
   createdAt         DateTime @default(now())
 }
 

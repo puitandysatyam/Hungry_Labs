@@ -190,7 +190,8 @@ export const placeOrder = async (data: any, authenticatedUserId?: number) => {
         data: {
             orderId: orderData.id,
             razorpayOrderId: rzpOrder.id,
-            status: "CREATED"
+            status: "CREATED",
+            amount: Math.round(calculatedTotal * 100)
         }
     });
 

@@ -158,6 +158,16 @@
           <p v-if="orderStatus" class="status-msg mt-3" :class="orderStatus.type">
             {{ orderStatus.text }}
           </p>
+          
+          <button 
+            v-if="orderStatus && orderStatus.type === 'error' && orderData"
+            @click="retryPayment"
+            class="btn btn-primary w-100 btn-pay mt-3"
+            :disabled="isSubmitting"
+          >
+            <span v-if="isSubmitting">Retrying...</span>
+            <span v-else>Retry Payment</span>
+          </button>
         </div>
       </div>
     </div>
@@ -330,7 +340,8 @@ const placeOrder = async () => {
       throw new Error(errText || 'Failed to place order')
     }
     
-    const orderData = await response.json()
+    const orderDataResp = await response.json()
+    orderData = orderDataResp
     
     // Load Razorpay Script
     const isLoaded = await loadRazorpay()
@@ -366,6 +377,9 @@ const placeOrder = async () => {
           })
 
           if (!verifyResp.ok) {
+            // Before showing error, check if backend already confirmed via webhook
+            const resolved = await checkPaymentStatus()
+            if (resolved) return
             const errJson = await verifyResp.json().catch(() => ({}))
             throw new Error(errJson.error || 'Payment signature verification failed.')
           }
@@ -383,9 +397,12 @@ const placeOrder = async () => {
           }, 2000)
         } catch (vErr) {
           console.error("Verification error:", vErr)
-          orderStatus.value = {
-            type: 'error',
-            text: `Verification notice: ${vErr.message}. If payment was deducted, kitchen webhook will confirm shortly.`
+          const resolved = await checkPaymentStatus()
+          if (!resolved) {
+            orderStatus.value = {
+              type: 'error',
+              text: `Verification notice: ${vErr.message}. You can retry your order below.`
+            }
           }
         } finally {
           isSubmitting.value = false
@@ -399,9 +416,12 @@ const placeOrder = async () => {
       theme: { color: "#ff3b00" },
       modal: {
         ondismiss: function () {
-          orderStatus.value = {
-            type: 'error',
-            text: 'Payment window closed. You can complete your order anytime.'
+          const resolved = checkPaymentStatus()
+          if (!resolved) {
+            orderStatus.value = {
+              type: 'error',
+              text: 'Payment window closed. You can retry your order below.'
+            }
           }
           isSubmitting.value = false
         }
@@ -422,7 +442,145 @@ const placeOrder = async () => {
   }
 }
 
-// STRICT REQUIREMENT 10: AUTO-APPLY PENDING COUPONS FROM HOMEPAGE OFFERS
+// Check backend payment status (for reconciliation after verify failure or modal dismiss)
+const checkPaymentStatus = async () => {
+  if (!orderData) return
+  try {
+    const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/payment/status/${orderData.orderId}`)
+    if (resp.ok) {
+      const data = await resp.json()
+      if (data.found && data.status === 'SUCCESS') {
+        cartStore.clearCart()
+        orderStatus.value = {
+          type: 'success',
+          text: `Payment already confirmed! Your Order #${orderData.orderId} is grilling.`
+        }
+        setTimeout(() => {
+          if (authStore.isAuthenticated) {
+            router.push('/history')
+          }
+        }, 2000)
+        return true
+      }
+      if (data.found && data.status === 'FAILED') {
+        orderStatus.value = {
+          type: 'error',
+          text: 'Payment failed on our end. You can retry below.'
+        }
+        return false
+      }
+    }
+  } catch (e) {
+    console.error("Payment status check failed:", e)
+  }
+  return false
+}
+
+// Retry payment for a stuck/failed order
+const retryPayment = async () => {
+  if (!orderData) return
+  try {
+    isSubmitting.value = true
+    const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/payment/retry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authStore.getAuthHeaders() },
+      body: JSON.stringify({ orderId: orderData.orderId })
+    })
+    if (!resp.ok) {
+      const errJson = await resp.json().catch(() => ({}))
+      throw new Error(errJson.error || 'Retry failed')
+    }
+    const data = await resp.json()
+    orderStatus.value = {
+      type: 'info',
+      text: 'Retrying payment... please complete the checkout.'
+    }
+    // Reopen Razorpay with the new order ID
+    const isLoaded = await loadRazorpay()
+    if (!isLoaded) throw new Error('Razorpay SDK failed to load.')
+    const options = {
+      key: publicKeyId,
+      amount: data.amount,
+      currency: "INR",
+      name: "The Hungry Lab",
+      description: "Fast Food Kitchen Order - Retry",
+      image: "/assets/Logo.png",
+      order_id: data.razorpayOrderId,
+      handler: async function (response) {
+        try {
+          isSubmitting.value = true
+          const verifyResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/payment/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: orderData.orderId,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            })
+          })
+          if (!verifyResp.ok) {
+            const errJson = await verifyResp.json().catch(() => ({}))
+            throw new Error(errJson.error || 'Payment signature verification failed.')
+          }
+          cartStore.clearCart()
+          orderStatus.value = {
+            type: 'success',
+            text: `Payment Successful! Your Order #${orderData.orderId} is confirmed and grilling.`
+          }
+          setTimeout(() => {
+            if (authStore.isAuthenticated) {
+              router.push('/history')
+            }
+          }, 2000)
+        } catch (vErr) {
+          console.error("Retry verification error:", vErr)
+          const resolved = await checkPaymentStatus()
+          if (!resolved) {
+            orderStatus.value = {
+              type: 'error',
+              text: `Verification notice: ${vErr.message}`
+            }
+          }
+        } finally {
+          isSubmitting.value = false
+        }
+      },
+      prefill: {
+        name: formData.value.customerName,
+        email: formData.value.customerEmail,
+        contact: formData.value.customerPhone
+      },
+      theme: { color: "#ff3b00" },
+      modal: {
+        ondismiss: function () {
+          const resolved = checkPaymentStatus()
+          if (!resolved) {
+            orderStatus.value = {
+              type: 'error',
+              text: 'Payment window closed. You can retry your order.'
+            }
+          }
+          isSubmitting.value = false
+        }
+      }
+    }
+    const rzp1 = new window.Razorpay(options)
+    rzp1.on('payment.failed', function (response){
+      orderStatus.value = { type: 'error', text: 'Retry payment failed: ' + response.error.description }
+      isSubmitting.value = false
+    })
+    rzp1.open()
+  } catch (error) {
+    console.error("Retry error:", error)
+    orderStatus.value = { type: 'error', text: '' + error.message }
+    isSubmitting.value = false
+  }
+}
+
+// Store orderData for retry/status use
+let orderData = null
+
 onMounted(() => {
   const pendingCoupon = route.query.coupon || sessionStorage.getItem('pendingCoupon')
   if (pendingCoupon) {

@@ -107,6 +107,187 @@ export const verifyPayment = async ({
 };
 
 /**
+ * Fetch the current payment + order status for a given local order ID.
+ * Used by frontend to reconcile after verification failures or modal dismiss.
+ */
+export const getPaymentStatus = async (orderId: number) => {
+    const payment = await prisma.payment.findFirst({
+        where: { orderId },
+        include: { order: true }
+    });
+
+    if (!payment) {
+        return {
+            found: false,
+            orderId,
+            status: "NOT_FOUND",
+            razorpayOrderId: null,
+            razorpayPaymentId: null,
+            amount: null,
+            refunded: false
+        };
+    }
+
+    return {
+        found: true,
+        orderId: payment.orderId,
+        status: payment.status,
+        orderStatus: payment.order.status,
+        razorpayOrderId: payment.razorpayOrderId,
+        razorpayPaymentId: payment.razorpayPaymentId,
+        amount: payment.amount,
+        refunded: payment.refunded
+    };
+};
+
+/**
+ * Initiate a refund via Razorpay for a given payment.
+ * Returns the Razorpay refund reference.
+ */
+export const initiateRefund = async ({
+    orderId,
+    amount,
+    reason
+}: {
+    orderId: number;
+    amount?: number; // in paise; if omitted, full refund
+    reason?: string;
+}) => {
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    if (!keyId || !secret) {
+        throw new Error("Razorpay credentials not configured on the server.");
+    }
+
+    const payment = await prisma.payment.findFirst({
+        where: { orderId },
+        include: { order: true }
+    });
+
+    if (!payment) {
+        throw new Error(`No payment record found for order #${orderId}`);
+    }
+
+    if (payment.status !== 'SUCCESS') {
+        throw new Error("Cannot refund a payment that is not successful.");
+    }
+
+    if (payment.refunded) {
+        throw new Error("This payment has already been refunded.");
+    }
+
+    if (!payment.razorpayPaymentId) {
+        throw new Error("No Razorpay payment ID on record to refund against.");
+    }
+
+    const razorpay = new (require('razorpay'))({
+        key_id: keyId,
+        key_secret: secret
+    });
+
+    const refundAmount = amount ?? payment.amount;
+    if (!refundAmount || refundAmount <= 0) {
+        throw new Error("Invalid refund amount.");
+    }
+
+    const refund = await razorpay.payments.refund(payment.razorpayPaymentId, {
+        amount: refundAmount,
+        ...(reason ? { notes: { reason } } : {})
+    });
+
+    // Mark refunded in DB
+    await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+            refunded: true,
+            refundId: refund.id
+        }
+    });
+
+    // Update order status to reflect refund
+    await prisma.order.update({
+        where: { id: payment.orderId },
+        data: { status: "REFUNDED" }
+    });
+
+    return {
+        success: true,
+        refundId: refund.id,
+        amount: refund.amount,
+        currency: refund.currency,
+        status: refund.status,
+        orderId: payment.orderId
+    };
+};
+
+/**
+ * Retry payment for a stuck PENDING or FAILED order.
+ * Creates a new Razorpay order and updates the Payment record mapping.
+ */
+export const retryPayment = async (orderId: number) => {
+    const payment = await prisma.payment.findFirst({
+        where: { orderId },
+        include: { order: true }
+    });
+
+    if (!payment) {
+        throw new Error(`No payment record found for order #${orderId}`);
+    }
+
+    const order = payment.order;
+    if (order.status === 'CONFIRMED' && payment.status === 'SUCCESS') {
+        throw new Error("Order is already confirmed and paid.");
+    }
+
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+        throw new Error("Razorpay credentials not configured on the server.");
+    }
+
+    const razorpay = new (require('razorpay'))({
+        key_id: keyId,
+        key_secret: keySecret
+    });
+
+    const amountInPaise = payment.amount ?? Math.round(order.totalAmount * 100);
+    if (!amountInPaise || amountInPaise < 100) {
+        throw new Error("Invalid order amount for retry.");
+    }
+
+    const rzpOrder = await razorpay.orders.create({
+        amount: amountInPaise,
+        currency: "INR",
+        receipt: `receipt_retry_order_${order.id}_${Date.now()}`
+    });
+
+    // Update existing payment record to point to the new Razorpay order
+    await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+            razorpayOrderId: rzpOrder.id,
+            razorpayPaymentId: null,
+            status: "CREATED",
+            refunded: false,
+            refundId: null
+        }
+    });
+
+    // Reset order to PENDING so it can flow through normally again
+    await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "PENDING" }
+    });
+
+    return {
+        orderId: order.id,
+        razorpayOrderId: rzpOrder.id,
+        amount: amountInPaise,
+        status: "PENDING"
+    };
+};
+
+/**
  * Handles incoming Razorpay Webhooks.
  * Validates HMAC SHA-256 with RAZORPAY_WEBHOOK_SECRET.
  */
@@ -183,6 +364,39 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
                     })
                 ]);
             }
+        } else if (event === 'payment.refunded') {
+            // Acknowledge refund processed by Razorpay
+            await prisma.payment.update({
+                where: { id: payment.id },
+                data: { refunded: true }
+            });
+            await prisma.order.update({
+                where: { id: payment.orderId },
+                data: { status: "REFUNDED" }
+            });
+        } else if (event === 'order.paid') {
+            // Order fully paid (could be via multiple partial payments)
+            if (payment.status !== 'SUCCESS') {
+                await prisma.$transaction([
+                    prisma.payment.update({
+                        where: { id: payment.id },
+                        data: { status: "SUCCESS", razorpayPaymentId: rzpPaymentId }
+                    }),
+                    prisma.order.update({
+                        where: { id: payment.orderId },
+                        data: { status: "CONFIRMED" }
+                    })
+                ]);
+            }
+        } else if (event === 'refund.processed') {
+            await prisma.payment.update({
+                where: { id: payment.id },
+                data: { refunded: true }
+            });
+            await prisma.order.update({
+                where: { id: payment.orderId },
+                data: { status: "REFUNDED" }
+            });
         }
 
         return true;

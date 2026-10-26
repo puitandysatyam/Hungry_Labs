@@ -189,3 +189,56 @@ export const handleWebhook = async (req: Request, res: Response) => {
         res.status(400).send("Webhook exception");
     }
 };
+
+/**
+ * GET /api/payment/status/:orderId
+ * Returns current payment + order status for frontend reconciliation.
+ */
+export const getPaymentStatus = async (req: Request, res: Response) => {
+    try {
+        const orderId = Number(req.params.orderId);
+        if (!orderId || isNaN(orderId)) {
+            return res.status(400).json({ error: "Valid order ID is required." });
+        }
+        const result = await paymentService.getPaymentStatus(orderId);
+        res.json(result);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message || "Failed to fetch payment status." });
+    }
+};
+
+/**
+ * POST /api/payment/refund
+ * Initiate a refund for a paid order.
+ * Body: { orderId, amount? (paise), reason? }
+ */
+export const initiateRefund = async (req: Request, res: Response) => {
+    try {
+        const { orderId, amount, reason } = req.body;
+        if (!orderId) {
+            return res.status(400).json({ error: "orderId is required." });
+        }
+        const result = await paymentService.initiateRefund({ orderId: Number(orderId), amount, reason });
+        res.json(result);
+    } catch (e: any) {
+        res.status(400).json({ error: e.message || "Refund failed." });
+    }
+};
+
+/**
+ * POST /api/payment/retry
+ * Retry payment for a stuck PENDING or FAILED order.
+ * Body: { orderId }
+ */
+export const retryPayment = async (req: Request, res: Response) => {
+    try {
+        const { orderId } = req.body;
+        if (!orderId) {
+            return res.status(400).json({ error: "orderId is required." });
+        }
+        const result = await paymentService.retryPayment(Number(orderId));
+        res.json(result);
+    } catch (e: any) {
+        res.status(400).json({ error: e.message || "Payment retry failed." });
+    }
+};
