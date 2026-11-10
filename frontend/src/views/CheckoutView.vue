@@ -301,21 +301,17 @@ const placeOrder = async () => {
     isSubmitting.value = true
     orderStatus.value = null
     
-    const envKey = (import.meta.env.VITE_RAZORPAY_KEY_ID || '').trim()
-    let publicKeyId = (envKey.startsWith('rzp_test_') || envKey.startsWith('rzp_live_')) ? envKey : null
-
-    if (!publicKeyId) {
-      const configResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/config`)
-      if (configResp.ok) {
-        const configData = await configResp.json()
-        if (configData.keyId && (configData.keyId.startsWith('rzp_test_') || configData.keyId.startsWith('rzp_live_'))) {
-          publicKeyId = configData.keyId
-        }
+    let publicKeyId = null
+    const configResp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/config`)
+    if (configResp.ok) {
+      const configData = await configResp.json()
+      if (configData.keyId && (configData.keyId.startsWith('rzp_test_') || configData.keyId.startsWith('rzp_live_'))) {
+        publicKeyId = configData.keyId
       }
     }
-    
+
     if (!publicKeyId) {
-      publicKeyId = 'rzp_test_TTZO8LwtSgqMxf'
+      throw new Error('Payment configuration unavailable. Please try again later.')
     }
 
     const payload = {
