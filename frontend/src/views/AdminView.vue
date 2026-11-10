@@ -26,27 +26,35 @@
         <p>No active orders in the queue right now.</p>
       </div>
 
-      <div class="orders-grid">
+            <div class="orders-grid">
         <div v-for="order in activeOrders" :key="order.id" class="card order-card">
           <div class="order-header">
             <h4>Order #{{ order.id }}</h4>
             <span :class="['status-badge', getStatusClass(order.status)]">{{ order.status }}</span>
           </div>
           <div class="order-body">
-            <p><strong>Customer:</strong> {{ order.customerName }} ({{ order.customerPhone }})</p>
+            <p><strong>Customer:</strong> {{ order.customerName || 'N/A' }} <span v-if="order.customerPhone">({{ order.customerPhone }})</span></p>
+            <p v-if="order.customerEmail" class="text-sm text-muted"><strong>Email:</strong> {{ order.customerEmail }}</p>
+            <p v-if="order.deliveryAddress" class="text-sm"><strong>Address:</strong> {{ order.deliveryAddress }}</p>
+            <p class="mt-1"><strong>Total:</strong> ?{{ Number(order.totalAmount || 0).toFixed(2) }}</p>
+            <p v-if="order.payment?.razorpayPaymentId" class="text-sm text-muted"><strong>Payment ID:</strong> {{ order.payment.razorpayPaymentId }}</p>
             <ul class="item-list mt-2">
               <li v-for="item in order.orderItemList" :key="item.id">
-                <span class="qty">{{ item.quantity }}x</span> {{ item.menuItem.name }}
+                <span class="qty">{{ item.quantity }}x</span> {{ item.menuItem?.name || 'Item' }}
+                <span class="text-sm text-muted"> (?{{ Number(item.menuItem?.price || 0).toFixed(2) }} ea)</span>
                 <div v-if="item.addonList && item.addonList.length" class="text-muted text-sm pl-4">
-                  + {{ item.addonList.map(a => a.name).join(', ') }}
+                  + {{ item.addonList.map(a => a.name + ' (?' + Number(a.price||0).toFixed(2) + ')').join(', ') }}
                 </div>
               </li>
             </ul>
           </div>
           <div class="order-actions mt-3">
-            <button v-if="order.status === 'CONFIRMED'" @click="updateOrderStatus(order.id, 'PREPARING')" class="btn btn-secondary w-100 mb-2">Start Preparing</button>
+            <button v-if="['PAID','CONFIRMED'].includes(order.status)" @click="updateOrderStatus(order.id, 'ACCEPTED')" class="btn btn-primary w-100 mb-2">Accept Order</button>
+            <button v-if="['PAID','CONFIRMED','ACCEPTED'].includes(order.status)" @click="rejectOrder(order.id)" class="btn btn-danger w-100 mb-2">Reject (Auto Refund)</button>
+            <button v-if="order.status === 'ACCEPTED'" @click="updateOrderStatus(order.id, 'PREPARING')" class="btn btn-secondary w-100 mb-2">Start Preparing</button>
             <button v-if="order.status === 'PREPARING'" @click="updateOrderStatus(order.id, 'OUT_FOR_DELIVERY')" class="btn btn-primary w-100 mb-2">Send for Delivery</button>
-            <button v-if="order.status === 'OUT_FOR_DELIVERY'" @click="updateOrderStatus(order.id, 'DELIVERED')" class="btn btn-secondary w-100" style="background-color: #28a745; color: white;">Mark Delivered</button>
+            <button v-if="order.status === 'OUT_FOR_DELIVERY'" @click="updateOrderStatus(order.id, 'DELIVERED')" class="btn btn-secondary w-100 mb-2" style="background-color: #28a745; color: white;">Mark Delivered</button>
+            <button v-if="['PAID','CONFIRMED','ACCEPTED'].includes(order.status)" @click="cancelOrderAdmin(order.id)" class="btn btn-outline w-100">Cancel Order</button>
           </div>
         </div>
       </div>
@@ -56,7 +64,7 @@
     <div v-if="activeTab === 'history'" class="tab-content card">
       <div class="section-header">
         <h3>Order History</h3>
-        <input type="text" v-model="orderSearch" placeholder="Search by ID or Status..." class="form-input search-input" />
+        <input type="text" v-model="orderSearch" placeholder="Search by ID, status, name, phone..." class="form-input search-input" />
       </div>
 
       <div class="table-responsive mt-3">
@@ -64,19 +72,40 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Customer</th>
+              <th>Customer & Contact</th>
+              <th>Address</th>
+              <th>Items</th>
               <th>Amount</th>
               <th>Status</th>
+              <th>Payment</th>
               <th>Date</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="order in filteredHistory" :key="order.id">
               <td>#{{ order.id }}</td>
-              <td>{{ order.customerName }}</td>
-              <td>₹{{ order.totalAmount.toFixed(2) }}</td>
+              <td>
+                <strong>{{ order.customerName || 'N/A' }}</strong>
+                <div class="text-sm text-muted">{{ order.customerPhone || '' }}</div>
+                <div class="text-sm text-muted">{{ order.customerEmail || '' }}</div>
+              </td>
+              <td class="text-sm" style="max-width:220px">{{ order.deliveryAddress || 'N/A' }}</td>
+              <td>
+                <ul class="item-list text-sm">
+                  <li v-for="item in order.orderItemList" :key="item.id">
+                    {{ item.quantity }}x {{ item.menuItem?.name || 'Item' }}
+                    <span v-if="item.addonList?.length" class="text-muted">(+ {{ item.addonList.map(a=>a.name).join(', ') }})</span>
+                  </li>
+                </ul>
+              </td>
+              <td><strong>₹{{ Number(order.totalAmount||0).toFixed(2) }}</strong></td>
               <td><span :class="['status-badge', getStatusClass(order.status)]">{{ order.status }}</span></td>
-              <td>{{ new Date(order.createdAt).toLocaleDateString() }}</td>
+              <td class="text-sm">
+                <div>{{ order.payment?.status || 'N/A' }}</div>
+                <div v-if="order.payment?.razorpayPaymentId" class="text-muted">{{ order.payment.razorpayPaymentId }}</div>
+                <div v-if="order.payment?.refunded" class="status-badge status-green">Refunded</div>
+              </td>
+              <td>{{ order.createdAt ? new Date(order.createdAt).toLocaleString() : '' }}</td>
             </tr>
           </tbody>
         </table>
@@ -295,7 +324,7 @@
       <div class="section-header">
         <div>
           <h3 class="mb-0">Refund Management</h3>
-          <small class="text-muted">Issue refunds for paid orders. Full or partial refunds supported.</small>
+          <small class="text-muted">Eligible: paid orders in PAID/CONFIRMED/ACCEPTED/PREPARING (not yet out for delivery). No refunds once out for delivery or delivered.</small>
         </div>
         <button @click="fetchRefundableOrders" class="btn btn-secondary btn-sm">Refresh</button>
       </div>
@@ -306,18 +335,18 @@
 
       <div v-else-if="refundableOrders.length === 0" class="empty-state text-center card">
         <p>No refundable orders found.</p>
-        <p class="text-sm text-muted">Orders must be CONFIRMED or DELIVERED, paid, and not already refunded.</p>
+        <p class="text-sm text-muted">Orders must be paid, not refunded, and not yet out for delivery.</p>
       </div>
 
       <div v-else class="table-responsive mt-3">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Order ID</th>
-              <th>Customer</th>
+              <th>Order</th>
+              <th>Customer & Address</th>
+              <th>Items</th>
               <th>Amount</th>
               <th>Status</th>
-              <th>Refundable Amount</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -326,13 +355,20 @@
               <td>#{{ order.id }}</td>
               <td>
                 <strong>{{ order.customerName }}</strong>
+                <div class="text-muted text-sm">{{ order.customerPhone }}</div>
                 <div class="text-muted text-sm">{{ order.customerEmail }}</div>
+                <div class="text-sm">{{ order.deliveryAddress }}</div>
               </td>
-              <td><strong>₹{{ order.totalAmount.toFixed(2) }}</strong></td>
               <td>
-                <span :class="['status-badge', getStatusClass(order.status)]">{{ order.status }}</span>
+                <ul class="item-list text-sm">
+                  <li v-for="item in order.orderItemList" :key="item.id">
+                    {{ item.quantity }}x {{ item.menuItem?.name }}
+                    <span v-if="item.addonList?.length" class="text-muted">(+ {{ item.addonList.map(a=>a.name).join(', ') }})</span>
+                  </li>
+                </ul>
               </td>
-              <td><strong>₹{{ order.totalAmount.toFixed(2) }}</strong></td>
+              <td><strong>₹{{ Number(order.totalAmount||0).toFixed(2) }}</strong></td>
+              <td><span :class="['status-badge', getStatusClass(order.status)]">{{ order.status }}</span></td>
               <td>
                 <div class="table-btn-group">
                   <button @click="openRefundModal(order)" class="btn btn-secondary btn-sm">Refund</button>
@@ -556,15 +592,7 @@ const fetchAddons = async () => {
   } catch (e) { console.error(e) }
 }
 
-const updateOrderStatus = async (id, status) => {
-  try {
-    await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders/${id}/status?status=${status}`, {
-      method: 'PUT',
-      headers: authStore.getAuthHeaders()
-    })
-    fetchActiveOrders()
-  } catch (e) { console.error(e) }
-}
+
 
 // Polling and Lifecycle
 onMounted(() => {
@@ -589,8 +617,12 @@ watch(activeTab, (newTab) => {
 const filteredHistory = computed(() => {
   if (!orderSearch.value) return orderHistory.value
   const s = orderSearch.value.toLowerCase()
-  return orderHistory.value.filter(o => 
-    o.id.toString().includes(s) || o.status.toLowerCase().includes(s)
+  return orderHistory.value.filter(o =>
+    o.id.toString().includes(s) ||
+    String(o.status||'').toLowerCase().includes(s) ||
+    String(o.customerName||'').toLowerCase().includes(s) ||
+    String(o.customerPhone||'').toLowerCase().includes(s) ||
+    String(o.customerEmail||'').toLowerCase().includes(s)
   )
 })
 const filteredMenu = computed(() => {
@@ -799,9 +831,10 @@ const fetchRefundableOrders = async () => {
     const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders`, { headers: authStore.getAuthHeaders() })
     if (!res.ok) throw new Error("Failed to load orders.")
     const allOrders = await res.json()
-    // Filter: CONFIRMED or DELIVERED orders that are paid and not refunded
-    refundableOrders.value = allOrders.filter(o => 
-      (o.status === 'CONFIRMED' || o.status === 'DELIVERED') && o.payment && o.payment.status === 'SUCCESS' && !o.payment.refunded
+    // Eligible: paid, not refunded, and not yet out for delivery/delivered
+    refundableOrders.value = allOrders.filter(o =>
+      ['PAID','CONFIRMED','ACCEPTED','PREPARING'].includes(o.status) &&
+      o.payment && o.payment.status === 'SUCCESS' && !o.payment.refunded
     )
   } catch (e) {
     console.error(e)
@@ -872,9 +905,9 @@ const handleRefundSubmit = async () => {
 
 // Helpers
 const getStatusClass = (s) => {
-  if (['CONFIRMED', 'DELIVERED', 'SUCCESS'].includes(s)) return 'status-green'
+  if (['CONFIRMED', 'DELIVERED', 'SUCCESS', 'PAID', 'ACCEPTED'].includes(s)) return 'status-green'
   if (['PREPARING', 'OUT_FOR_DELIVERY', 'PENDING'].includes(s)) return 'status-yellow'
-  if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(s)) return 'status-red'
+  if (['CANCELLED', 'FAILED', 'REFUNDED', 'REJECTED'].includes(s)) return 'status-red'
   return 'status-gray'
 }
 
@@ -1153,3 +1186,4 @@ fetchCarouselImages()
 
 .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
 </style>
+

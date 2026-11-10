@@ -7,7 +7,8 @@ import { s3Client, generatePresignedUrl, getBucketName } from '../utils/s3';
 import { isCloudinaryConfigured, generateCloudinarySignature, uploadToCloudinary } from '../utils/cloudinary';
 import { initiateRefund } from '../services/paymentService';
 import { sendRefundNotification } from '../services/emailService';
-import { cleanupStalePendingOrders } from '../services/orderService';
+import { getInvoicePdfBuffer } from '../services/invoiceService';
+import { cleanupStalePendingOrders, adminUpdateOrderStatus as adminUpdateOrderStatusService } from '../services/orderService';
 
 const invalidateMenuCache = async () => {
     if (redis) {
@@ -30,37 +31,62 @@ const invalidateCarouselCache = async () => {
 }
 
 // -- ORDERS --
+const formatOrder = (order: any) => ({
+    id: order.id,
+    customerId: order.customerId,
+    customerName: order.customerName,
+    customerEmail: order.customerEmail,
+    customerPhone: order.customerPhone,
+    deliveryAddress: order.deliveryAddress,
+    totalAmount: order.totalAmount,
+    status: order.status,
+    createdAt: order.createdAt,
+    payment: order.payment ? {
+        id: order.payment.id,
+        status: order.payment.status,
+        amount: order.payment.amount,
+        razorpayOrderId: order.payment.razorpayOrderId,
+        razorpayPaymentId: order.payment.razorpayPaymentId,
+        refunded: order.payment.refunded,
+        refundId: order.payment.refundId
+    } : null,
+    orderItemList: (order.orderItems || []).map((item: any) => ({
+        id: item.id,
+        quantity: item.quantity,
+        menuItem: item.menuItem,
+        addonList: item.addons || []
+    }))
+});
+
 export const getActiveOrders = async (req: Request, res: Response) => {
     try {
         const activeOrders = await prisma.order.findMany({
-            where: { status: { in: ["PENDING", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY"] } },
-            include: { user: true, orderItems: { include: { menuItem: true, addons: true } } },
+            where: { status: { in: ["PENDING", "PAID", "CONFIRMED", "ACCEPTED", "PREPARING", "OUT_FOR_DELIVERY"] } },
+            include: { user: true, payment: true, orderItems: { include: { menuItem: true, addons: true } } },
             orderBy: { createdAt: 'desc' }
         });
-        res.json(activeOrders);
+        res.json(activeOrders.map(formatOrder));
     } catch (e: any) { res.status(500).json(e.message); }
 };
 
 export const getAllOrders = async (req: Request, res: Response) => {
     try {
         const orders = await prisma.order.findMany({
-            include: { user: true, orderItems: { include: { menuItem: true, addons: true } } },
+            include: { user: true, payment: true, orderItems: { include: { menuItem: true, addons: true } } },
             orderBy: { createdAt: 'desc' }
         });
-        res.json(orders);
+        res.json(orders.map(formatOrder));
     } catch (e: any) { res.status(500).json(e.message); }
 };
 
 export const updateOrderStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { status } = req.query;
-        const order = await prisma.order.update({
-            where: { id: Number(id) },
-            data: { status: String(status) }
-        });
-        res.json(order);
-    } catch (e: any) { res.status(400).json(e.message); }
+        const status = String(req.query.status || req.body?.status || '').toUpperCase();
+        const reason = req.body?.reason ? String(req.body.reason) : undefined;
+        const result = await adminUpdateOrderStatusService(Number(id), status, reason);
+        res.json(result);
+    } catch (e: any) { res.status(400).json({ error: e.message || 'Failed to update status' }); }
 };
 
 // -- ADDONS --
@@ -279,6 +305,7 @@ export const createCoupon = async (req: Request, res: Response) => {
  * Admin-initiated refund for a paid order.
  * POST /api/admin/payment/refund/:orderId
  * Body: { amount? (paise), reason? }
+ * No refund allowed once order is OUT_FOR_DELIVERY or DELIVERED.
  */
 export const adminRefund = async (req: Request, res: Response) => {
     try {
@@ -290,26 +317,53 @@ export const adminRefund = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Valid order ID is required." });
         }
 
-        const result = await initiateRefund({
-            orderId: id,
-            amount,
-            reason: reason || "Admin-initiated refund"
+        const order = await prisma.order.findUnique({
+            where: { id },
+            include: { payment: true, orderItems: { include: { menuItem: true, addons: true } } }
         });
+        if (!order) return res.status(404).json({ error: "Order not found." });
+        if (['OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
+            return res.status(400).json({ error: "Refund not allowed once the order is out for delivery or delivered." });
+        }
+        if (!order.payment || order.payment.status !== 'SUCCESS') {
+            return res.status(400).json({ error: "Only successfully paid orders can be refunded." });
+        }
+        if (order.payment.refunded || order.status === 'REFUNDED') {
+            return res.status(400).json({ error: "This order is already refunded." });
+        }
 
-        // Send refund notification email
-        const payment = await prisma.payment.findFirst({
-            where: { orderId: id },
-            include: { order: true }
+        const refundReason = reason || "Admin-initiated refund";
+        const result = await initiateRefund({ orderId: id, amount, reason: refundReason });
+
+        const items = (order.orderItems || []).map((item: any) => {
+            const unitPrice = item.menuItem?.price ?? 0;
+            const addons = (item.addons || []).map((a: any) => ({ name: a.name, price: a.price }));
+            const addonTotal = addons.reduce((s: number, a: any) => s + a.price, 0);
+            return { name: item.menuItem?.name || 'Item', quantity: item.quantity, unitPrice, addons, lineTotal: (unitPrice + addonTotal) * item.quantity };
         });
+        const subtotal = items.reduce((s: number, i: any) => s + i.lineTotal, 0);
+        const details = {
+            orderId: order.id,
+            customerName: order.customerName || 'Food Lover',
+            customerEmail: order.customerEmail || '',
+            customerPhone: order.customerPhone || '',
+            deliveryAddress: order.deliveryAddress || '',
+            items,
+            subtotal,
+            totalAmount: order.totalAmount,
+            status: 'REFUNDED',
+            paymentId: order.payment.razorpayPaymentId || 'N/A',
+            refundId: result.refundId
+        };
 
-        if (payment?.order.customerEmail) {
+        if (order.customerEmail) {
+            const inv = await getInvoicePdfBuffer(id).catch(() => null);
             await sendRefundNotification(
-                payment.order.customerEmail,
-                payment.order.customerName || 'Food Lover',
-                id,
-                payment.order.totalAmount,
+                order.customerEmail,
+                details,
                 result.refundId,
-                reason || "Admin-initiated refund"
+                refundReason,
+                inv ? [{ filename: `invoice-${inv.invoiceNumber}.pdf`, content: inv.buffer, contentType: 'application/pdf' }] : []
             ).catch(err => console.error("[AdminRefund] Refund email failed:", err));
         }
 
@@ -393,15 +447,15 @@ export const reconcilePayments = async (req: Request, res: Response) => {
             let issue: string | null = null;
             let severity: 'info' | 'warning' | 'error' = 'info';
 
-            if (!payment) {
-                issue = "No payment record exists for this order";
-                severity = order.status === 'CONFIRMED' ? 'error' : 'warning';
-            } else if (payment.status === 'SUCCESS' && order.status !== 'CONFIRMED') {
-                issue = "Payment is SUCCESS but order is not CONFIRMED";
-                severity = 'error';
-            } else if (payment.status === 'FAILED' && order.status === 'CONFIRMED') {
-                issue = "Payment is FAILED but order is CONFIRMED";
-                severity = 'error';
+                if (!payment) {
+                    issue = "No payment record exists for this order";
+                    severity = ['CONFIRMED', 'PAID', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status) ? 'error' : 'warning';
+                } else if (payment.status === 'SUCCESS' && !['CONFIRMED', 'PAID', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REFUNDED'].includes(order.status)) {
+                    issue = "Payment is SUCCESS but order status does not reflect a paid/active state";
+                    severity = 'error';
+                } else if (payment.status === 'FAILED' && ['CONFIRMED', 'PAID', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
+                    issue = "Payment is FAILED but order is in an active/confirmed state";
+                    severity = 'error';
             } else if (order.status === 'PENDING' && payment && payment.status === 'CREATED') {
                 // Check if order is older than 30 min
                 const ageMinutes = (Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60);

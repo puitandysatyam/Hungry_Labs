@@ -112,16 +112,18 @@ export const verifyPaymentSignatureDirect = async (req: Request, res: Response) 
         });
 
         if (payment && payment.status !== 'SUCCESS') {
-            await prisma.$transaction([
+            const [, updatedOrder] = await prisma.$transaction([
                 prisma.payment.update({
                     where: { id: payment.id },
                     data: { status: "SUCCESS", razorpayPaymentId: String(paymentId) }
                 }),
                 prisma.order.update({
                     where: { id: payment.orderId },
-                    data: { status: "CONFIRMED" }
+                    data: { status: "PAID" }
                 })
             ]);
+            const { generateAndStoreInvoice } = require('../services/invoiceService');
+            generateAndStoreInvoice(updatedOrder.id).catch(() => {});
         }
 
         return res.status(200).json({
@@ -209,7 +211,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
 
 /**
  * POST /api/payment/refund
- * Initiate a refund for a paid order.
+ * Initiate a refund for a paid order (enforces no refund once out for delivery/delivered).
  * Body: { orderId, amount? (paise), reason? }
  */
 export const initiateRefund = async (req: Request, res: Response) => {
@@ -218,7 +220,13 @@ export const initiateRefund = async (req: Request, res: Response) => {
         if (!orderId) {
             return res.status(400).json({ error: "orderId is required." });
         }
-        const result = await paymentService.initiateRefund({ orderId: Number(orderId), amount, reason });
+        const id = Number(orderId);
+        const order = await prisma.order.findUnique({ where: { id }, include: { payment: true } });
+        if (!order) return res.status(404).json({ error: "Order not found." });
+        if (['OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status)) {
+            return res.status(400).json({ error: "Refund not allowed once the order is out for delivery or delivered." });
+        }
+        const result = await paymentService.initiateRefund({ orderId: id, amount, reason });
         res.json(result);
     } catch (e: any) {
         res.status(400).json({ error: e.message || "Refund failed." });

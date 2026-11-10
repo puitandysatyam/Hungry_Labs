@@ -51,7 +51,7 @@
             <span class="amount text-brand">₹{{ order.totalAmount.toFixed(2) }}</span>
             <span v-if="order.status === 'REFUNDED'" class="refund-badge mt-1 d-block text-sm">Refunded</span>
           </div>
-          <button v-if="order.status === 'CONFIRMED'" @click="cancelOrder(order.id)" class="btn btn-outline mt-2 w-100">Cancel Order</button>
+          <button v-if="['CONFIRMED','PAID','ACCEPTED'].includes(order.status)" @click="cancelOrder(order.id)" class="btn btn-outline mt-2 w-100">Cancel Order</button>
         </div>
       </div>
     </div>

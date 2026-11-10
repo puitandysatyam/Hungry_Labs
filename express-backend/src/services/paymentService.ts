@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import prisma from '../config/db';
-import { sendOrderConfirmation } from './emailService';
 import { generateAndStoreInvoice } from './invoiceService';
 
 interface VerifyPaymentParams {
@@ -63,17 +62,17 @@ export const verifyPayment = async ({
         throw new Error(`No payment record found matching Razorpay Order ${razorpayOrderId}`);
     }
 
-    // Idempotency: if already confirmed, return success without duplicate side-effects
-    if (payment.status === 'SUCCESS' && payment.order.status === 'CONFIRMED') {
+    // Idempotency: if already paid/confirmed and invoice flow handled, return success
+    if (payment.status === 'SUCCESS' && ['PAID', 'CONFIRMED', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(payment.order.status)) {
         return {
             success: true,
             message: "Payment already verified.",
             orderId: payment.orderId,
-            status: "CONFIRMED"
+            status: payment.order.status
         };
     }
 
-    // Atomically confirm payment and order
+    // Atomically confirm payment and mark order as PAID (awaiting kitchen acceptance)
     const [, updatedOrder] = await prisma.$transaction([
         prisma.payment.update({
             where: { id: payment.id },
@@ -84,27 +83,16 @@ export const verifyPayment = async ({
         }),
         prisma.order.update({
             where: { id: payment.orderId },
-            data: { status: "CONFIRMED" }
+            data: { status: "PAID" }
         })
     ]);
 
-    // Send order confirmation email asynchronously
-    if (updatedOrder.customerEmail) {
-        sendOrderConfirmation(
-            updatedOrder.customerEmail,
-            updatedOrder.customerName || 'Food Lover',
-            updatedOrder.id,
-            razorpayPaymentId,
-            updatedOrder.totalAmount
-        ).catch(err => console.error("[Razorpay] Error sending order confirmation email:", err));
-    }
-
-    // Auto-generate invoice and upload to B2
+    // Auto-generate invoice and send confirmation with full details + PDF attachment
     generateAndStoreInvoice(updatedOrder.id).catch(err => console.error("[Razorpay] Error generating invoice:", err));
 
     return {
         success: true,
-        message: "Payment verified and order confirmed.",
+        message: "Payment verified. Order is paid and awaiting kitchen acceptance.",
         orderId: updatedOrder.id,
         status: updatedOrder.status
     };
@@ -265,23 +253,22 @@ export const retryPayment = async (orderId: number) => {
         receipt: `receipt_retry_order_${order.id}_${Date.now()}`
     });
 
-    // Update existing payment record to point to the new Razorpay order
-    await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-            razorpayOrderId: rzpOrder.id,
-            razorpayPaymentId: null,
-            status: "CREATED",
-            refunded: false,
-            refundId: null
-        }
-    });
-
-    // Reset order to PENDING so it can flow through normally again
-    await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "PENDING" }
-    });
+    await prisma.$transaction([
+        prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+                razorpayOrderId: rzpOrder.id,
+                razorpayPaymentId: null,
+                status: "CREATED",
+                refunded: false,
+                refundId: null
+            }
+        }),
+        prisma.order.update({
+            where: { id: order.id },
+            data: { status: "PENDING" }
+        })
+    ]);
 
     return {
         orderId: order.id,
@@ -330,8 +317,8 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
         if (!payment) return true; // Unknown or legacy order, acknowledge to Razorpay
 
         if (event === 'payment.captured' || event === 'payment.authorized') {
-            // Idempotency: if already confirmed by client-side verify, do not re-send email
-            if (payment.status === 'SUCCESS' && payment.order.status === 'CONFIRMED') {
+            // Idempotency: if already processed
+            if (payment.status === 'SUCCESS' && ['PAID','CONFIRMED','ACCEPTED','PREPARING','OUT_FOR_DELIVERY','DELIVERED'].includes(payment.order.status)) {
                 return true;
             }
 
@@ -342,21 +329,11 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
                 }),
                 prisma.order.update({
                     where: { id: payment.orderId },
-                    data: { status: "CONFIRMED" }
+                    data: { status: "PAID" }
                 })
             ]);
 
-            if (updatedOrder.customerEmail) {
-                sendOrderConfirmation(
-                    updatedOrder.customerEmail,
-                    updatedOrder.customerName || '',
-                    updatedOrder.id,
-                    rzpPaymentId,
-                    updatedOrder.totalAmount
-                ).catch(err => console.error("[Webhook] Error sending confirmation email:", err));
-            }
-
-            // Auto-generate invoice via webhook
+            // Auto-generate invoice and send confirmation via webhook
             generateAndStoreInvoice(updatedOrder.id).catch(err => console.error("[Webhook] Error generating invoice:", err));
         } else if (event === 'payment.failed') {
             if (payment.status !== 'SUCCESS') {
@@ -384,16 +361,17 @@ export const processWebhook = async (payloadText: string, signature: string): Pr
         } else if (event === 'order.paid') {
             // Order fully paid (could be via multiple partial payments)
             if (payment.status !== 'SUCCESS') {
-                await prisma.$transaction([
+                const [, updatedOrder] = await prisma.$transaction([
                     prisma.payment.update({
                         where: { id: payment.id },
                         data: { status: "SUCCESS", razorpayPaymentId: rzpPaymentId }
                     }),
                     prisma.order.update({
                         where: { id: payment.orderId },
-                        data: { status: "CONFIRMED" }
+                        data: { status: "PAID" }
                     })
                 ]);
+                generateAndStoreInvoice(updatedOrder.id).catch(err => console.error("[Webhook] Error generating invoice:", err));
             }
         } else if (event === 'refund.processed') {
             await prisma.payment.update({
