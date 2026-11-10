@@ -5,7 +5,7 @@ import {
     createMenuItem, updateMenuItem, deleteMenuItem,
     getCarouselImages, createCarouselImage, updateCarouselImage, deleteCarouselImage,
     getUploadUrl, uploadDirectToCloudinary,
-    createCoupon, updateCoupon, deleteCoupon,
+    createCoupon, updateCoupon, deleteCoupon, getCoupons,
     adminRefund,
     cleanupPendingOrders,
     reconcilePayments
@@ -46,6 +46,7 @@ router.get('/upload-url', getUploadUrl);
 router.post('/cloudinary-upload', uploadDirectToCloudinary);
 
 // Coupons
+router.get('/coupons', getCoupons);
 router.post('/coupons', createCoupon);
 router.put('/coupons/:id', updateCoupon);
 router.delete('/coupons/:id', deleteCoupon);

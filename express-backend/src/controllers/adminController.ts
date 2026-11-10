@@ -293,6 +293,13 @@ export const uploadDirectToCloudinary = async (req: Request, res: Response) => {
 };
 
 // -- COUPONS --
+export const getCoupons = async (req: Request, res: Response) => {
+    try {
+        const coupons = await prisma.coupon.findMany({ orderBy: { id: 'desc' } });
+        res.json(coupons);
+    } catch (e: any) { res.status(500).json(e.message); }
+};
+
 export const createCoupon = async (req: Request, res: Response) => {
     try {
         const coupon = await prisma.coupon.create({ data: req.body });
