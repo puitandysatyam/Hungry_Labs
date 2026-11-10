@@ -320,15 +320,49 @@ export const adminRefund = async (req: Request, res: Response) => {
 };
 
 // -- STALE ORDER CLEANUP --
+const CLEANUP_THROTTLE_KEY = "cron::cleanup-pending-last-run";
+const CLEANUP_MIN_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+let lastCleanupRunAt = 0;
+
 /**
  * Cleanup stale PENDING orders older than 30 minutes.
- * POST /api/admin/orders/cleanup-pending (can be triggered by Vercel cron)
+ * POST /api/admin/orders/cleanup-pending (can be triggered by Vercel cron or admin)
+ * Throttled to run at most once every 30 minutes.
  */
 export const cleanupPendingOrders = async (req: Request, res: Response) => {
     try {
+        const now = Date.now();
+        let lastRun = lastCleanupRunAt;
+
+        if (redis) {
+            try {
+                const stored = await redis.get<number | string>(CLEANUP_THROTTLE_KEY);
+                if (stored) lastRun = Number(stored);
+            } catch {}
+        }
+
+        if (now - lastRun < CLEANUP_MIN_INTERVAL_MS) {
+            const nextEligibleInMs = CLEANUP_MIN_INTERVAL_MS - (now - lastRun);
+            return res.status(200).json({
+                success: true,
+                skipped: true,
+                message: `Cleanup throttled. Next eligible in ${Math.ceil(nextEligibleInMs / 60000)} minutes.`,
+                lastRunAt: lastRun ? new Date(lastRun).toISOString() : null
+            });
+        }
+
         const result = await cleanupStalePendingOrders();
+
+        lastCleanupRunAt = now;
+        if (redis) {
+            try {
+                await redis.set(CLEANUP_THROTTLE_KEY, String(now), { ex: 3600 });
+            } catch {}
+        }
+
         res.json({
             success: true,
+            skipped: false,
             message: `Processed ${result.total} stale orders: ${result.refunded} refunded, ${result.cancelled} cancelled`,
             ...result
         });

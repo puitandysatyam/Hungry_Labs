@@ -10,6 +10,7 @@ import paymentRoutes from '../src/routes/payment';
 import contactRoutes from '../src/routes/contact';
 import invoiceRoutes from '../src/routes/invoice';
 import backupRoutes from '../src/routes/backup';
+import cronRoutes from '../src/routes/cron';
 import { rateLimiterMiddleware } from '../src/middlewares/rateLimiter';
 import { createRazorpayOrder, verifyPaymentSignatureDirect } from '../src/controllers/paymentController';
 import { startBackupCron } from '../src/services/backupService';
@@ -80,6 +81,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/admin', backupRoutes);
+app.use('/api/cron', cronRoutes);
 
 // Start scheduled database backup cron (only in production-like or when explicitly enabled)
 if (process.env.ENABLE_BACKUP_CRON === 'true') {

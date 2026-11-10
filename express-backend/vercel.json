@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/admin/backup",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/admin/orders/cleanup-pending",
-      "schedule": "*/30 * * * *"
+      "path": "/api/cron/maintenance",
+      "schedule": "0 2 * * *"
     }
   ],
   "rewrites": [
