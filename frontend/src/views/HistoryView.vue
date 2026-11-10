@@ -110,7 +110,8 @@ const cancelOrder = async (orderId) => {
   try {
     const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/orders/${orderId}/cancel`, {
       method: 'POST',
-      headers: authStore.getAuthHeaders()
+      headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: 'Cancelled by customer' })
     })
 
     if (!res.ok) {

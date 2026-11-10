@@ -594,6 +594,37 @@ const fetchAddons = async () => {
 
 
 
+const updateOrderStatus = async (id, status, reason) => {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/orders/${id}/status?status=${status}`, {
+      method: 'PUT',
+      headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(reason ? { reason } : {})
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || 'Failed to update order status')
+    }
+    await fetchActiveOrders()
+    fetchOrderHistory()
+  } catch (e) {
+    console.error(e)
+    alert(e.message || 'Failed to update order')
+  }
+}
+
+const rejectOrder = async (id) => {
+  const reason = prompt('Reason for rejecting this order?', 'Ingredient unavailable') || 'Ingredient unavailable'
+  if (!confirm(`Reject order #${id}? If paid, refund will be issued automatically.`)) return
+  await updateOrderStatus(id, 'REJECTED', reason)
+}
+
+const cancelOrderAdmin = async (id) => {
+  const reason = prompt('Reason for cancellation?', 'Cancelled by admin') || 'Cancelled by admin'
+  if (!confirm(`Cancel order #${id}? If paid, refund will be issued automatically.`)) return
+  await updateOrderStatus(id, 'CANCELLED', reason)
+}
+
 // Polling and Lifecycle
 onMounted(() => {
   fetchActiveOrders()
