@@ -300,6 +300,25 @@ export const createCoupon = async (req: Request, res: Response) => {
     } catch (e: any) { res.status(400).json(e.message); }
 };
 
+export const updateCoupon = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const coupon = await prisma.coupon.update({
+            where: { id: Number(id) },
+            data: req.body
+        });
+        res.json(coupon);
+    } catch (e: any) { res.status(400).json(e.message); }
+};
+
+export const deleteCoupon = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await prisma.coupon.delete({ where: { id: Number(id) } });
+        res.json({ success: true });
+    } catch (e: any) { res.status(400).json({ error: "Cannot delete coupon." }); }
+};
+
 // -- ADMIN REFUND --
 /**
  * Admin-initiated refund for a paid order.

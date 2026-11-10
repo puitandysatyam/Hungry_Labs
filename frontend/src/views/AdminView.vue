@@ -285,7 +285,13 @@
 
     <!-- ================= COUPONS TAB ================= -->
     <div v-if="activeTab === 'coupons'" class="tab-content card">
-      <h3>Create Coupon Campaign</h3>
+      <div class="section-header">
+        <div>
+          <h3 class="mb-0">Coupon Campaigns</h3>
+          <small class="text-muted">Create, edit, or delete coupon codes</small>
+        </div>
+        <button @click="fetchCoupons" class="btn btn-secondary btn-sm">Refresh</button>
+      </div>
       <form @submit.prevent="handleCouponSubmit" class="admin-form mt-3">
         <div class="form-group">
           <label>Coupon Code</label>
@@ -314,9 +320,40 @@
             <label for="isActive">Campaign Active</label>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary">Save Coupon</button>
+        <button type="submit" class="btn btn-primary">{{ couponForm.id ? 'Update Coupon' : 'Save Coupon' }}</button>
+        <button type="button" v-if="couponForm.id" class="btn btn-secondary" @click="resetCouponForm()">Cancel Edit</button>
         <p v-if="couponStatus" class="status-msg mt-3">{{ couponStatus }}</p>
       </form>
+
+      <div class="table-responsive mt-5">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Type</th>
+              <th>Value</th>
+              <th>Min Order (₹)</th>
+              <th>Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in allCoupons" :key="c.id">
+              <td><strong>{{ c.code }}</strong></td>
+              <td>{{ c.discountType }}</td>
+              <td>{{ c.discountType === 'PERCENTAGE' ? c.discountValue + '%' : '₹' + c.discountValue }}</td>
+              <td>{{ c.minOrderValue }}</td>
+              <td>{{ c.active ? 'Yes' : 'No' }}</td>
+              <td>
+                <div class="table-btn-group">
+                  <button @click="openCouponEdit(c)" class="btn btn-secondary btn-sm">Edit</button>
+                  <button @click="deleteCoupon(c.id)" class="btn btn-danger btn-sm">Delete</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- ================= REFUNDS TAB ================= -->
@@ -562,6 +599,8 @@ const menuSearch = ref('')
 
 const allAddons = ref([])
 
+const allCoupons = ref([])
+
 // Fetch Logic
 const fetchActiveOrders = async () => {
   if (activeTab.value !== 'orders') return
@@ -589,6 +628,13 @@ const fetchAddons = async () => {
   try {
     const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/addons`, { headers: authStore.getAuthHeaders() })
     if (res.ok) allAddons.value = await res.json()
+  } catch (e) { console.error(e) }
+}
+
+const fetchCoupons = async () => {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/coupons`, { headers: authStore.getAuthHeaders() })
+    if (res.ok) allCoupons.value = await res.json()
   } catch (e) { console.error(e) }
 }
 
@@ -630,6 +676,7 @@ onMounted(() => {
   fetchActiveOrders()
   fetchMenu()
   fetchAddons()
+  fetchCoupons()
   pollingInterval = setInterval(fetchActiveOrders, 5000) // 5s short polling
 })
 onUnmounted(() => {
@@ -642,6 +689,7 @@ watch(activeTab, (newTab) => {
   if (newTab === 'menu') fetchMenu()
   if (newTab === 'addons') fetchAddons()
   if (newTab === 'refunds') fetchRefundableOrders()
+  if (newTab === 'coupons') fetchCoupons()
 })
 
 // Computed Filters
@@ -834,11 +882,42 @@ const handleCouponSubmit = async () => {
   couponStatus.value = ''
   try {
     couponForm.value.code = couponForm.value.code.toUpperCase()
-    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/coupons`, { method: 'POST', headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(couponForm.value) })
+    const url = couponForm.value.id ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/coupons/${couponForm.value.id}` : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/coupons`
+    const method = couponForm.value.id ? 'PUT' : 'POST'
+    const res = await fetch(url, { method, headers: { ...authStore.getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(couponForm.value) })
     if (!res.ok) throw new Error("Failed to save.")
-    couponStatus.value = "Coupon Activated!"
-    couponForm.value = { code: '', discountType: 'PERCENTAGE', discountValue: 0, minOrderValue: 0, active: true }
+    couponStatus.value = couponForm.value.id ? "Coupon Updated!" : "Coupon Activated!"
+    couponForm.value = { id: null, code: '', discountType: 'PERCENTAGE', discountValue: 0, minOrderValue: 0, active: true }
+    fetchCoupons()
   } catch (err) { couponStatus.value = "Error: " + err.message }
+}
+
+const resetCouponForm = () => {
+  couponStatus.value = ''
+  couponForm.value = { id: null, code: '', discountType: 'PERCENTAGE', discountValue: 0, minOrderValue: 0, active: true }
+}
+
+const openCouponEdit = (c) => {
+  couponStatus.value = ''
+  couponForm.value = {
+    id: c.id,
+    code: c.code,
+    discountType: c.discountType,
+    discountValue: Number(c.discountValue || 0),
+    minOrderValue: Number(c.minOrderValue || 0),
+    active: Boolean(c.active)
+  }
+}
+
+const deleteCoupon = async (id) => {
+  if(!confirm('Are you sure you want to delete this coupon?')) return;
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/coupons/${id}`, { method: 'DELETE', headers: authStore.getAuthHeaders() })
+    if(!res.ok) { let e = await res.json(); alert(e.error || 'Cannot delete coupon'); return; }
+    couponStatus.value = "Coupon Deleted!"
+    fetchCoupons()
+    resetCouponForm()
+  } catch(e) {}
 }
 
 // Refunds State

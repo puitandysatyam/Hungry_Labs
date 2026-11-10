@@ -5,7 +5,7 @@ import {
     createMenuItem, updateMenuItem, deleteMenuItem,
     getCarouselImages, createCarouselImage, updateCarouselImage, deleteCarouselImage,
     getUploadUrl, uploadDirectToCloudinary,
-    createCoupon,
+    createCoupon, updateCoupon, deleteCoupon,
     adminRefund,
     cleanupPendingOrders,
     reconcilePayments
@@ -47,6 +47,8 @@ router.post('/cloudinary-upload', uploadDirectToCloudinary);
 
 // Coupons
 router.post('/coupons', createCoupon);
+router.put('/coupons/:id', updateCoupon);
+router.delete('/coupons/:id', deleteCoupon);
 
 // Admin Payments & Refunds
 router.post('/payment/refund/:orderId', adminRefund);
